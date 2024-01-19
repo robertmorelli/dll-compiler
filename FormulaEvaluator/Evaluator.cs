@@ -26,6 +26,9 @@ using System.Text.RegularExpressions;
 
 namespace FormulaEvaluator
 {
+    /// <summary>
+    /// Class to hold our one useful function
+    /// </summary>
     public class Evaluator
     {
         private delegate void TokenProcFunc(string token);
@@ -153,14 +156,20 @@ namespace FormulaEvaluator
             /// Proceed as above, using the looked-up value of t instead of t
             /// </summary>
             TokenProcFunc varFunc = (token) => {
+                int? val;
                 try
                 {
-                    intFunc(variableEvaluator(token).ToString());
+                    val = variableEvaluator(token);
+                    if (val == null) throw new ArgumentException();
                 }
-                catch
+                catch (Exception e)
                 {
-                    throw new Exception("Variable not found");
+                    //rethrow same error in some cases. cry about it
+                    throw new ArgumentException();
                 }
+                //zero never happens. idk how c# nullable promotion works. maybe try crying and ill change it
+                intFunc(val.ToString() ?? "0");
+                
             };
 
             /// <summary>
@@ -184,6 +193,8 @@ namespace FormulaEvaluator
 
             /// <summary>
             /// Push t onto the operator stack
+            /// 
+            /// also unnecessary func wrapper. try crying if you dont like it
             /// </summary>
             TokenProcFunc multiplicativefunc = (token) => operatorStack.Push(token);
 
