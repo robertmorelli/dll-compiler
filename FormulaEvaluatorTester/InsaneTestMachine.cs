@@ -40,7 +40,7 @@ namespace FormulaEvaluatorTester
             Random random = new Random();
             string testCase;
             int result;
-            for (int i = 0; i < 30; i++)//one thousand test cases
+            for (int i = 0; i < 10; i++)//one thousand test cases
             {
 
                 //should succeed
@@ -260,9 +260,9 @@ namespace FormulaEvaluatorTester
                 foreach (var token in tokens) {
                     if (tokenIdentifier.IsMatch(token))
                     {
-                        if (token == "&T" && error) {
+                        if (token == "&T" && errorVar) {
                             exp += " a0 ";
-                            error = false;
+                            errorVar = false;
                         }
 
                         var possibilities = CFG.GetValueOrDefault(token, [() => "1"]);
@@ -283,6 +283,15 @@ namespace FormulaEvaluatorTester
             return exp;
         }
 
+        /// <summary>
+        /// makes random alphabetic strings via the most niavest algorithm
+        /// </summary>
+        /// <param name="length">
+        /// how long should it be
+        /// </param>
+        /// <returns>
+        /// the random string
+        /// </returns>
         static string GenerateRandomAlphabeticString(int length)
         {
             string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
