@@ -1,0 +1,246 @@
+﻿
+
+using System.Text.RegularExpressions;
+
+///<summary>
+/// Author:    Robert Morelli
+/// Partner:   None
+/// Date:      1/18/2024
+/// Course:    CS 3500, University of Utah, School of Computing
+/// Copyright: CS 3500 and [Your Name(s)] - Do Whateva
+///
+/// I, Robert Morelli, certify that I wrote this code from scratch and
+/// did not copy it in part or whole from code that is not my own. All 
+/// references to code that is not my own used in the completion of the
+/// assignments are cited in my README file.
+///
+/// File Contents
+///     This is a formula evaluator that takes in a string and evaluates
+///     it. In the larger context this is intended to be used to evaluate
+///     formulas in a spreadsheet. The evaluator takes in a string and
+///     parses/evaluates it using the provided algorithm.
+///     
+/// </summary>
+
+
+
+namespace FormulaEvaluator
+{
+    public class Evaluator
+    {
+        public delegate void TokenProcFunc(string token);
+        public delegate int Lookup(String variable_name);
+
+
+        public static int Evaluate(String expression,
+                                   Lookup variableEvaluator)
+        {
+            //stack for numbers in exp
+            var valueStack = new Stack<int>();
+            //stack for operators
+            var operatorStack = new Stack<string>();
+            //dictionary of correct action items
+            var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, variableEvaluator);
+            expression = string.Format("({0})*1",expression); //gaurentees one value at end (removes some checking)
+            Regex
+                .Split(expression, findTokenRegex.ToString()) //spllit expression into tokens
+                .ToList().ForEach((token) =>
+                    //for each token determine the correct action to take (or error action)
+                    tokenProcessor
+                        .AsEnumerable()
+                        .FirstOrDefault(
+                            (keyValuePair) => 
+                                keyValuePair.Key.IsMatch(token)
+                            , errorTokenAction)
+                        //do the action that was determined appropriate for the token
+                        .Value.Invoke(token)
+                     );
+            //either add/sub the last two, return the value, or fail.
+            if (operatorStack.Count != 0) throw new Exception("Malformed Expression");
+            else if (valueStack.Count != 1) throw new Exception("Too many or too few values for amount of operators");
+            else return valueStack.Pop();
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //the value, the whole value, and nothing but the value -> "^...$"
+        //all the required matching. obv some of these could be direct string comp
+        //but its fine cuz uniformity
+        //each one of these identifies some subset of potention tokens
+        private static Regex findTokenRegex =           new Regex("\\s*(\\(|\\)|-|\\+|\\*|/)\\s*");
+        private static Regex isWhiteSpaceRegex =        new Regex("^\\s*$");
+        private static Regex isIntRegex =               new Regex("^\\d+$");
+        private static Regex isVariableRegex =          new Regex("^\\w+\\d+$");
+        private static Regex isAddativeRegex =          new Regex("^\\+|-$");
+        private static Regex isAddRegex =               new Regex("^\\+$");
+        private static Regex isMultiplicativeRegex =    new Regex("^\\*|/$");
+        private static Regex isMultRegex =              new Regex("^\\*$");
+        private static Regex isOpeningParenRegex =      new Regex("^\\($");
+        private static Regex isClosingParenRegex =      new Regex("^\\)$");
+        private static Regex isAnythingRegex =          new Regex("^.*$");
+        private static Regex isZeros =                  new Regex("^0+$");
+
+        private static TokenProcFunc nothingFunc =      (token) => { };
+        private static TokenProcFunc everythingFunc =   (token) => {
+            throw new Exception(string.Format("Could not identify token ({0})", token));
+        };
+
+        private static KeyValuePair<Regex, TokenProcFunc>  errorTokenAction =
+                                                         new KeyValuePair<Regex, TokenProcFunc>(isAnythingRegex, everythingFunc);
+
+
+        /// <summary>
+        /// Generates a dictionary where the keys are regex that recognize the right thing to be parsed
+        /// and the values are delegates of what to do.
+        /// 
+        /// Built this way to be composable with other dictionaries such that other tokens may be recognised.
+        /// Should probably use ordered dictionary so theres no lookup cost but its minimal and not N/big O relevant
+        /// This could be made better if i do a global variable replace and then a direct dictionary lookup
+        /// </summary>
+        /// <param name="valueStack">
+        /// The value stack used by the delegates to push values.
+        /// </param>
+        /// <param name="operatorStack">
+        /// The operator stack used by the delegates
+        /// </param>
+        /// <param name="variableEvaluator">
+        /// The variable lookup used by the variable delegate
+        /// </param>
+        /// <returns>
+        /// A dictionary with keys and values for appropriate operations to perform per regex
+        /// </returns>
+        /// <exception cref="Exception">
+        /// This function will not throw errors, the returned delegates will throw errors
+        /// for improper formulas
+        /// </exception>
+        private static Dictionary<Regex, TokenProcFunc> generateTokenProcessorDictionary(Stack<int> valueStack, Stack<string> operatorStack, Lookup variableEvaluator) {
+
+            /// <summary>
+            /// If * or / is at the top of the operator stack, pop the value stack,
+            /// pop the operator stack, and apply the popped operator to the popped
+            /// number and t. Push the result onto the value stack.
+            /// 
+            /// Otherwise, push t onto the value stack.
+            /// </summary>
+            TokenProcFunc intFunc = (token) => {
+                if (operatorStack.Count > 0 && isMultiplicativeRegex.IsMatch(operatorStack.Peek()))
+                    if (valueStack.Count == 0) throw new Exception("Infix operator only found one operand");
+                    else if (isZeros.IsMatch(token)) throw new Exception("Division by zero");
+                    else if (isMultRegex.IsMatch(operatorStack.Pop()))
+                        valueStack.Push(valueStack.Pop() * int.Parse(token));
+                    else
+                        valueStack.Push(valueStack.Pop() / int.Parse(token));
+                else
+
+                    valueStack.Push(int.Parse(token));
+
+            };
+
+            /// <summary>
+            /// Proceed as above, using the looked-up value of t instead of t
+            /// </summary>
+            TokenProcFunc varFunc = (token) => {
+                try
+                {
+                    intFunc(variableEvaluator(token).ToString());
+                }
+                catch
+                {
+                    throw new Exception("Variable not found");
+                }
+            };
+
+            /// <summary>
+            /// "If + or - is at the top of the operator stack,
+            /// pop the value stack twice and the operator stack once,
+            /// then apply the popped operator to the popped numbers,
+            /// then push the result onto the value stack.
+            /// 
+            /// Push t onto the operator stack"
+            /// </summary>
+            TokenProcFunc addativeFunc = (token) => {
+                if (operatorStack.Count > 0 && isAddativeRegex.IsMatch(operatorStack.Peek()))
+                    if (valueStack.Count < 2) throw new Exception("Two adds in a row");
+                    else if (isAddRegex.IsMatch(operatorStack.Pop()))
+                        valueStack.Push(valueStack.Pop() + valueStack.Pop());
+                    else
+                        valueStack.Push(valueStack.Pop() - valueStack.Pop());
+                operatorStack.Push(token);
+            };
+
+
+            /// <summary>
+            /// Push t onto the operator stack
+            /// </summary>
+            TokenProcFunc multiplicativefunc = (token) => operatorStack.Push(token);
+
+
+            /// <summary>
+            /// Push t onto the operator stack
+            /// 
+            /// duplicate of mult. cry about it
+            /// </summary>
+            TokenProcFunc openParenFunc = (token) => operatorStack.Push(token);
+
+            /// <summary>
+            /// Do all three of these steps in order:
+            /// (1) 
+            ///     If + or - is at the top of the operator stack,
+            ///     pop the value stack twice and the operator stack
+            ///     once. Apply the popped operator to the popped
+            ///     numbers. Push the result onto the value stack.
+            /// (2)
+            ///     The top of the operator stack should be a '('.Pop it.
+            /// (3)
+            ///     If* or / is at the top of the operator stack, pop the
+            ///     value stack twice and the operator stack once. Apply
+            ///     the popped operator to the popped numbers. Push the
+            ///     result onto the value stack.
+            /// </summary>
+            TokenProcFunc closeParenFunc = (token) => {
+                if (operatorStack.Count > 1 && isAddativeRegex.IsMatch(operatorStack.Peek()))
+                    if (valueStack.Count < 2) throw new Exception("Not enough items to add within parenthesis");
+                    else if (isAddRegex.IsMatch(operatorStack.Pop()))
+                        valueStack.Push(valueStack.Pop() + valueStack.Pop());
+                    else
+                        valueStack.Push(valueStack.Pop() - valueStack.Pop());
+                if (operatorStack.Count == 0 || !isOpeningParenRegex.IsMatch(operatorStack.Pop()))
+                    throw new Exception("Unmatched closing parenthesis");
+
+                if (operatorStack.Count > 0 && isMultiplicativeRegex.IsMatch(operatorStack.Peek()))
+                    intFunc(valueStack.Pop().ToString());
+            };
+
+            // dictionary of regex matched with correct response.
+            return new Dictionary<Regex, TokenProcFunc> {
+                {isWhiteSpaceRegex, nothingFunc},
+                {isIntRegex, intFunc },
+                {isVariableRegex, varFunc },
+                {isAddativeRegex, addativeFunc },
+                {isMultiplicativeRegex, multiplicativefunc },
+                {isOpeningParenRegex, openParenFunc },
+                {isClosingParenRegex, closeParenFunc },
+            };
+
+        }
+
+
+
+
+    }
+}
