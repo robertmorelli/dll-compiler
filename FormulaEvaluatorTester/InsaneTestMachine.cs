@@ -1,0 +1,299 @@
+﻿///<summary>
+/// Author:    Robert Morelli
+/// Partner:   None
+/// Date:      1/18/2024
+/// Course:    CS 3500, University of Utah, School of Computing
+/// Copyright: CS 3500 and [Your Name(s)] - Do Whateva
+///
+/// I, Robert Morelli, certify that I wrote this code from scratch and
+/// did not copy it in part or whole from code that is not my own. All 
+/// references to code that is not my own used in the completion of the
+/// assignments are cited in my README file.
+///
+/// File Contents
+///     A tester for the FormulaEvaluator class. This program uses a CFG
+///     to generate random formulas and then evaluates them using the
+///     the evaluator.
+/// </summary>
+
+
+
+
+using FormulaEvaluator;
+using System.Text.RegularExpressions;
+using static FormulaEvaluator.Evaluator;
+
+
+namespace FormulaEvaluatorTester
+{
+    class InsaneTestMachine
+    {
+        /// <summary>
+        /// Execute a bunch of test cases. use generator to make valid strings and then add problems for fail cases.
+        /// Not sure if this counts as a hand-written test. I did hand write this code.
+        /// </summary>
+        /// <param name="args">ignore</param>
+        static void Main(string[] args)
+        {
+            Dictionary<string, int> lookupDict = new Dictionary<string, int>();
+            Lookup lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
+            Random random = new Random();
+            string testCase;
+            int result;
+            for (int i = 0; i < 30; i++)//one thousand test cases
+            {
+
+                //should succeed
+                testCase = createTestCase(lookupDict, false);
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("{0} = {1}",testCase,result));
+                } catch (Exception e)
+                {
+                    if(e.Message != "Division by zero") System.Console.WriteLine(string.Format("(should be valid case) test failed for {0}", testCase));
+                }
+
+
+
+                //should fail
+                testCase = createTestCase(lookupDict, false);
+                testCase = testCase.Insert(random.Next(0, testCase.Length), new List<string> { "(", ")" }[random.Next(0, 1)]);
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("(should be invalid case) test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+                //should fail
+                testCase = createTestCase(lookupDict, false);
+                testCase = "-" + testCase;
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+                //should fail
+                testCase = createTestCase(lookupDict, false);
+                testCase = testCase + "-";
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+                //should fail
+                testCase = createTestCase(lookupDict, false);
+                testCase = testCase + "+";
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+
+                //should fail
+                testCase = createTestCase(lookupDict, false);
+                testCase = "+" + testCase;
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+                //should fail
+                testCase = createTestCase(lookupDict, false);
+                testCase = testCase + "/0";
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+
+                //should fail
+                testCase = createTestCase(lookupDict, false);
+                testCase = testCase + "/(3-3)";
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+
+                //should fail
+                testCase = createTestCase(lookupDict, true);
+                try
+                {
+                    result = Evaluator.Evaluate(testCase, lu);
+                    System.Console.WriteLine(string.Format("test failed for {0}", testCase));
+                }
+                catch (Exception e)
+                {
+                    //test successful
+                }
+
+            }
+            Console.WriteLine("Done");
+        }
+
+        private delegate string GetAChild();
+
+
+
+
+        /// <summary>
+        /// Generate a viable test case using a cfg
+        /// The code is pretty obvious if you know what a CFG is supposed to look like
+        /// I will not give an explanation of a CFG here
+        /// </summary>
+        /// <param name="lookupDict">
+        /// a dictionary to be passed to the evaluator.
+        /// </param>
+        /// <param name="errorVar">
+        /// bool to add nonexistent var to fromula
+        /// </param>
+        /// <returns></returns>
+        static string createTestCase(Dictionary<string, int> lookupDict, bool errorVar) {
+            Random random = new Random();
+            int expansions = 1000;
+            var CFG = new Dictionary<string, List<GetAChild>> {
+                {"&S",new List<GetAChild>{() => "&E" } },
+                {"&E" ,new List<GetAChild>{
+                    () => "&T",
+                    () => "(&W&T&W)",
+                    () => "&T&W&O&W&T",
+                    () => {
+                        expansions--;
+                        return "&E&W&O&W&T";
+                    },
+                    () => {
+                        expansions--;
+                        return "&T&W&O&W&E";
+                    },
+                    () => {
+                        expansions--;
+                        return "(&W&E&W)";
+                    },
+                    () => {
+                        expansions-=2;
+                        return "&E&W&O&W&E";
+                    },
+                    () => {
+                        expansions-=2;
+                        return "&E&W&O&W&E";
+                    },
+                    () => {
+                        expansions-=2;
+                        return "&E&W&O&W&E";
+                    },
+                }},
+                {"&T" ,new List<GetAChild>{
+                    () => random.Next(1, 1000).ToString(),
+                    () => {
+                        string key = GenerateRandomAlphabeticString(random.Next(1, 4))+random.Next(1, 1000).ToString();
+                        if (lookupDict.ContainsKey(key))
+                        {
+                            return key;
+                        }
+                        else
+                        {
+                            int val = random.Next(1, 1000);
+                            lookupDict.Add(key, val);
+                            return key;
+                        }
+                    },
+                }},
+                {"&O" ,new List<GetAChild>{
+                    () => "+",
+                    () => "-",
+                    () => "/",
+                    () => "*",
+                }},
+
+                {"&W" ,new List<GetAChild>{
+                    () => {
+                        string space = "";
+                        for(int i = 0; i < random.Next(0,4); i++)
+                        {
+                            space += " ";
+                        }
+                        return space;
+                    },
+                }},
+            };
+
+            string exp = "&S";
+            var tokenIdentifier = new Regex("(&[WSTOE])");
+            while (exp.Contains("&")) {
+                var tokens = Regex.Split(exp, tokenIdentifier.ToString());
+                exp = "";
+                foreach (var token in tokens) {
+                    if (tokenIdentifier.IsMatch(token))
+                    {
+                        if (token == "&T" && error) {
+                            exp += " a0 ";
+                            error = false;
+                        }
+
+                        var possibilities = CFG.GetValueOrDefault(token, [() => "1"]);
+                        if (expansions < 0)
+                        {
+                            exp += possibilities[0].Invoke();
+                        }
+                        else
+                        {
+                            exp += possibilities[random.Next(0, possibilities.Count())].Invoke();
+                        }
+                    }
+                    else {
+                        exp += token;
+                    }
+                }
+            }
+            return exp;
+        }
+
+        static string GenerateRandomAlphabeticString(int length)
+        {
+            string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+            Random random = new Random();
+            char[] randomChars = new char[length];
+            for (int i = 0; i < length; i++)
+            {
+                int randomIndex = random.Next(0, alphabet.Length);
+                randomChars[i] = alphabet[randomIndex];
+            }
+            return new string(randomChars);
+        }
+    }
+}

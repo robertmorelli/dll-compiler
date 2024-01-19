@@ -28,10 +28,24 @@ namespace FormulaEvaluator
 {
     public class Evaluator
     {
-        public delegate void TokenProcFunc(string token);
+        private delegate void TokenProcFunc(string token);
         public delegate int Lookup(String variable_name);
 
-
+        /// <summary>
+        /// Evaluates a math expression for a spreadsheet
+        /// </summary>
+        /// <param name="expression">
+        /// The expression to be evaluated
+        /// </param>
+        /// <param name="variableEvaluator">
+        /// A lookup function for variables present in the formula
+        /// </param>
+        /// <returns>
+        /// The value of the expression as an integer
+        /// </returns>
+        /// <exception cref="Exception">
+        /// Errors come from malformed expressions and missing variables
+        /// </exception>
         public static int Evaluate(String expression,
                                    Lookup variableEvaluator)
         {
@@ -60,22 +74,6 @@ namespace FormulaEvaluator
             else if (valueStack.Count != 1) throw new Exception("Too many or too few values for amount of operators");
             else return valueStack.Pop();
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         //the value, the whole value, and nothing but the value -> "^...$"
