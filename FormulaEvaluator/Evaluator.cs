@@ -73,8 +73,8 @@ namespace FormulaEvaluator
                         .Value.Invoke(token)
                      );
             //either add/sub the last two, return the value, or fail.
-            if (operatorStack.Count != 0) throw new Exception("Malformed Expression");
-            else if (valueStack.Count != 1) throw new Exception("Too many or too few values for amount of operators");
+            if (operatorStack.Count != 0) throw new ArgumentException("Malformed Expression");
+            else if (valueStack.Count != 1) throw new ArgumentException("Too many or too few values for amount of operators");
             else return valueStack.Pop();
         }
 
@@ -98,7 +98,7 @@ namespace FormulaEvaluator
 
         private static TokenProcFunc nothingFunc =      (token) => { };
         private static TokenProcFunc everythingFunc =   (token) => {
-            throw new Exception(string.Format("Could not identify token ({0})", token));
+            throw new ArgumentException(string.Format("Could not identify token ({0})", token));
         };
 
         private static KeyValuePair<Regex, TokenProcFunc>  errorTokenAction =
@@ -140,8 +140,8 @@ namespace FormulaEvaluator
             /// </summary>
             TokenProcFunc intFunc = (token) => {
                 if (operatorStack.Count > 0 && isMultiplicativeRegex.IsMatch(operatorStack.Peek()))
-                    if (valueStack.Count == 0) throw new Exception("Infix operator only found one operand");
-                    else if (isZeros.IsMatch(token)) throw new Exception("Division by zero");
+                    if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
+                    else if (isZeros.IsMatch(token)) throw new ArgumentException("Division by zero");
                     else if (isMultRegex.IsMatch(operatorStack.Pop()))
                         valueStack.Push(valueStack.Pop() * int.Parse(token));
                     else
@@ -182,7 +182,7 @@ namespace FormulaEvaluator
             /// </summary>
             TokenProcFunc addativeFunc = (token) => {
                 if (operatorStack.Count > 0 && isAddativeRegex.IsMatch(operatorStack.Peek()))
-                    if (valueStack.Count < 2) throw new Exception("Two adds in a row");
+                    if (valueStack.Count < 2) throw new ArgumentException("Two adds in a row");
                     else if (isAddRegex.IsMatch(operatorStack.Pop()))
                         valueStack.Push(valueStack.Pop() + valueStack.Pop());
                     else
@@ -223,13 +223,13 @@ namespace FormulaEvaluator
             /// </summary>
             TokenProcFunc closeParenFunc = (token) => {
                 if (operatorStack.Count > 1 && isAddativeRegex.IsMatch(operatorStack.Peek()))
-                    if (valueStack.Count < 2) throw new Exception("Not enough items to add within parenthesis");
+                    if (valueStack.Count < 2) throw new ArgumentException("Not enough items to add within parenthesis");
                     else if (isAddRegex.IsMatch(operatorStack.Pop()))
                         valueStack.Push(valueStack.Pop() + valueStack.Pop());
                     else
                         valueStack.Push(valueStack.Pop() - valueStack.Pop());
                 if (operatorStack.Count == 0 || !isOpeningParenRegex.IsMatch(operatorStack.Pop()))
-                    throw new Exception("Unmatched closing parenthesis");
+                    throw new ArgumentException("Unmatched closing parenthesis");
 
                 if (operatorStack.Count > 0 && isMultiplicativeRegex.IsMatch(operatorStack.Peek()))
                     intFunc(valueStack.Pop().ToString());
@@ -247,9 +247,5 @@ namespace FormulaEvaluator
             };
 
         }
-
-
-
-
     }
 }
