@@ -144,9 +144,7 @@ namespace SpreadsheetUtilities
             if (!dependantSets.ContainsKey(s)) dependantSets[s] = [];
             foreach (var t in dependantSets[s]) RemoveDependency(s, t);
             foreach (var t in newDependents) AddDependency(s, t);
-            if (dependantSets.ContainsKey(s))
-                if(dependantSets[s].Count == 0)
-                    dependantSets.Remove(s);
+            if (dependantSets.ContainsKey(s)) if (this[s] == 0) dependantSets.Remove(s);
         }
 
 
@@ -162,9 +160,7 @@ namespace SpreadsheetUtilities
             if (!dependeeSets.ContainsKey(s)) dependeeSets[s] = [];
             foreach (var t in dependeeSets[s]) RemoveDependency(t, s);
             foreach (var t in newDependees) AddDependency(t, s);
-            if (dependeeSets.ContainsKey(s))
-                if(dependeeSets[s].Count == 0)
-                    dependeeSets.Remove(s);
+            if (dependeeSets.ContainsKey(s)) if (this[s] == 0) dependeeSets.Remove(s); 
         }
     }
 
