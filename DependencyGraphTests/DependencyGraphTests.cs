@@ -13,46 +13,228 @@ namespace DevelopmentTests
     public class DependencyGraphTests
     {
         /// <summary>
-        /// General coverage case
+        /// empty is zero
+        /// </summary>
+        [TestMethod()]
+        public void NothingIsVoid()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(0, t.Size);
+        }
+
+        /// <summary>
+        /// empty is zero but cover other func
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependentsForA()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// empty is zero but check a third way
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependeesForA()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(false, t.HasDependents("a"));
+        }
+
+        /// <summary>
+        /// empty is 0 but check by dependees
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependeesForA2()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(false, t.HasDependees("a"));
+        }
+
+        /// <summary>
+        /// empty is zero but check enumerables
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependentsForA2()
+        {
+            DependencyGraph t = new DependencyGraph();
+            IEnumerable<string> t2 = t.GetDependents("a");
+            Assert.AreEqual(0, t2.Count());
+        }
+
+        /// <summary>
+        /// empty is zero but check dependee enumerable
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependendeesForA3()
+        {
+            DependencyGraph t = new DependencyGraph();
+            IEnumerable<string> t2 = t.GetDependees("a");
+            Assert.AreEqual(0, t2.Count());
+        }
+
+        /// <summary>
+        /// empty is zero check brackets
         /// </summary>
         [TestMethod()]
         public void DependencyGraphCoverageTest()
         {
             DependencyGraph t = new DependencyGraph();
-
-            //check every single method with and without state in our obj
-            Assert.AreEqual(0, t.Size);
-            Assert.AreEqual(0, t["a"]);
-            Assert.AreEqual(false, t.HasDependents("a"));
-            Assert.AreEqual(false, t.HasDependees("a"));
-            IEnumerable<string> t2 = t.GetDependents("a");
-            Assert.AreEqual(0, t2.Count());
-            t2 = t.GetDependees("a");
-            Assert.AreEqual(0, t2.Count());
             t.RemoveDependency("a", "a");
             Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// empty is zero check dependency replacement for null
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependendeesForA5()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.ReplaceDependents("a", []);
             Assert.AreEqual(0, t["a"]);
+        }
+
+
+        /// <summary>
+        /// empty is zero but check replacement of dependees
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependendeesForA6()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.ReplaceDependees("a", []);
             Assert.AreEqual(0, t["a"]);
+        }
 
+
+        /// <summary>
+        /// one is one check
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.AddDependency("a", "a");
-
             Assert.AreEqual(1, t.Size);
+        }
+
+        /// <summary>
+        /// one is one check brackets
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA1()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             Assert.AreEqual(1, t["a"]);
+        }
+
+        /// <summary>
+        /// one is one check has dependent
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA2()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             Assert.AreEqual(true, t.HasDependents("a"));
+        }
+
+        /// <summary>
+        /// one is one check has dependees
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA3()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             Assert.AreEqual(true, t.HasDependees("a"));
-            t2 = t.GetDependents("a");
+        }
+
+        /// <summary>
+        /// one is one check dependent enumerable
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA4()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
+            var t2 = t.GetDependents("a");
             Assert.AreEqual(1, t2.Count());
-            t2 = t.GetDependees("a");
+        }
+
+        /// <summary>
+        /// one is one check dependee enumerable
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA5()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
+            var t2 = t.GetDependees("a");
             Assert.AreEqual(1, t2.Count());
+        }
+
+        /// <summary>
+        /// one to zero my remove
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe1()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             t.RemoveDependency("a", "a");
             Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// one to one by replacements
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe12()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.AddDependency("a", "a");
             t.ReplaceDependents("a", ["a"]);
             Assert.AreEqual(1, t["a"]);
+        }
+
+        /// <summary>
+        /// one to zero by replacements
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe17()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
+            t.ReplaceDependents("a", []);
+            Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// one to one by replacement dependee
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe13()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             t.ReplaceDependees("a", ["a"]);
             Assert.AreEqual(1, t["a"]);
+        }
+
+        /// <summary>
+        /// one to z by replacement dependee
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe19()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
+            t.ReplaceDependees("a", []);
+            Assert.AreEqual(0, t["a"]);
         }
 
         /// <summary>
