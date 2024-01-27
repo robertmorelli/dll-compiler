@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SpreadsheetUtilities;
 
@@ -13,6 +14,106 @@ namespace DevelopmentTests
     [TestClass()]
     public class DependencyGraphTests
     {
+        /// <summary>
+        /// General coverage case
+        /// </summary>
+        [TestMethod()]
+        public void DependencyGraphCoverageTest()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(0, t.Size);
+            Assert.AreEqual(0, t["a"]);
+            Assert.AreEqual(false, t.HasDependents("a"));
+            Assert.AreEqual(false, t.HasDependees("a"));
+            IEnumerable<string> t2 = t.GetDependents("a");
+            Assert.AreEqual(0, t2.Count());
+            t2 = t.GetDependees("a");
+            Assert.AreEqual(0, t2.Count());
+            t.RemoveDependency("a", "a");
+            Assert.AreEqual(0, t["a"]);
+            t.ReplaceDependents("a", []);
+            Assert.AreEqual(0, t["a"]);
+            t.ReplaceDependees("a", []);
+            Assert.AreEqual(0, t["a"]);
+
+            t.AddDependency("a", "a");
+
+            Assert.AreEqual(1, t.Size);
+            Assert.AreEqual(1, t["a"]);
+            Assert.AreEqual(true, t.HasDependents("a"));
+            Assert.AreEqual(true, t.HasDependees("a"));
+            t2 = t.GetDependents("a");
+            Assert.AreEqual(1, t2.Count());
+            t2 = t.GetDependees("a");
+            Assert.AreEqual(1, t2.Count());
+            t.RemoveDependency("a", "a");
+            Assert.AreEqual(0, t["a"]);
+            t.AddDependency("a", "a");
+            t.ReplaceDependents("a", ["a"]);
+            Assert.AreEqual(1, t["a"]);
+            t.ReplaceDependees("a", ["a"]);
+            Assert.AreEqual(1, t["a"]);
+        }
+
+        /// <summary>
+        ///check that adding and removing a lot of elements doesnt fuck the machine
+        ///</summary>
+        [TestMethod()]
+        public void MemLeakTest()
+        {
+
+            const int SIZE = 200;
+            string[] As = new string[SIZE];
+            string[] Bs = new string[SIZE];
+            for (int i = 0; i < SIZE; i++)
+            {
+                As[i] = "" + (char)('a' + i);
+                Bs[i] = "" + (char)('b' + i);
+            }
+
+            
+            DependencyGraph t = new DependencyGraph();
+            int preventOptimizations = 0;
+
+            for (int j = 0; j < 3; j++)
+            {
+                for (int i = 0; i < SIZE; i++)
+                {
+                    t.AddDependency(As[i], Bs[i]);
+                    preventOptimizations += t.Size;
+                }
+                for (int i = 0; i < SIZE; i++)
+                {
+                    t.RemoveDependency(As[i], Bs[i]);
+                    preventOptimizations += t.Size;
+                }
+            }
+
+            for (int i = 0; i < SIZE; i++)
+            {
+                t.AddDependency(As[i], Bs[i]);
+                preventOptimizations += t.Size;
+            }
+
+            long memStart = Process.GetCurrentProcess().PrivateMemorySize64;
+
+            for (int j = 0; j < 3; j++)
+            {
+                for (int i = 0; i < SIZE; i++)
+                {
+                    t.AddDependency(As[i], Bs[i]);
+                    preventOptimizations += t.Size;
+                }
+                for (int i = 0; i < SIZE; i++)
+                {
+                    t.RemoveDependency(As[i], Bs[i]);
+                    preventOptimizations += t.Size;
+                }
+            }
+
+            long memEnd = Process.GetCurrentProcess().PrivateMemorySize64;
+            Assert.AreEqual(true,(memEnd - memStart)<0);
+        }
 
         /// <summary>
         ///Empty graph should contain nothing

@@ -1,17 +1,8 @@
-﻿// Skeleton implementation written by Joe Zachary for CS 3500, September 2013.
-// Version 1.1 (Fixed error in comment for RemoveDependency.)
-// Version 1.2 - Daniel Kopta 
-//               (Clarified meaning of dependent and dependee.)
-//               (Clarified names in solution/project structure.)
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿// Worst Implementation of the dependency graph assignment
+// Version 4
 
 namespace SpreadsheetUtilities
 {
-
     /// <summary>
     /// (s1,t1) is an ordered pair of strings
     /// t1 depends on s1; s1 must be evaluated before t1
@@ -42,7 +33,7 @@ namespace SpreadsheetUtilities
     public class DependencyGraph
     {
         private readonly Dictionary<string, HashSet<string>> dependeeSets = [];
-        private readonly Dictionary<string, HashSet<string>> dependantSets = [];
+        private readonly Dictionary<string, HashSet<string>> dependantSets = [];//yes they are ants (not typo)
         /// <summary>
         /// Creates an empty DependencyGraph.
         /// </summary>
@@ -78,7 +69,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependents(string s)
         {
-            return dependantSets.ContainsKey(s) ? dependantSets[s].Count > 0 : false;
+            return dependantSets.ContainsKey(s);
         }
 
         /// <summary>
@@ -86,7 +77,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependees(string s)
         {
-            return dependeeSets.ContainsKey(s) ? dependeeSets[s].Count > 0 : false;
+            return dependeeSets.ContainsKey(s);
         }
 
         /// <summary>
@@ -146,8 +137,8 @@ namespace SpreadsheetUtilities
         public void ReplaceDependents(string s, IEnumerable<string> newDependents)
         {
             if (!dependantSets.ContainsKey(s)) dependantSets[s] = [];
-            foreach (string t in dependantSets[s]) RemoveDependency(s, t);
-            foreach (string t in newDependents) AddDependency(s, t);
+            foreach (var t in dependantSets[s]) RemoveDependency(s, t);
+            foreach (var t in newDependents) AddDependency(s, t);
         }
 
 
@@ -158,8 +149,8 @@ namespace SpreadsheetUtilities
         public void ReplaceDependees(string s, IEnumerable<string> newDependees)
         {
             if (!dependeeSets.ContainsKey(s)) dependeeSets[s] = [];
-            foreach (string t in dependeeSets[s]) RemoveDependency(t, s);
-            foreach (string t in newDependees) AddDependency(t,s);
+            foreach (var t in dependeeSets[s]) RemoveDependency(t, s);
+            foreach (var t in newDependees) AddDependency(t, s);
         }
     }
 
