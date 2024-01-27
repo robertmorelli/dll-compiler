@@ -5,9 +5,12 @@
 ///the rest of the tests are from the starter stuff
 /// </summary>
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
+using FormulaEvaluator;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SpreadsheetUtilities;
+using static FormulaEvaluator.Evaluator;
 
 
 namespace DevelopmentTests
@@ -19,6 +22,18 @@ namespace DevelopmentTests
     [TestClass()]
     public class DependencyGraphTests
     {
+
+        [TestMethod()]
+        public void TestEvalBecause()
+        {
+            Evaluate("1 + 2 * 3 / 4 +5 * (5 + 6 * 7 /8) -2",null);
+        }
+
+        [ExpectedException(typeof(ArgumentException))]
+        public void TestEvaluateFail() {
+            Evaluate("1 + 2 * 3 / 4 +5 * (5 + 6 * 7 /8) -2 + a2", null);
+        }
+
         /// <summary>
         /// General coverage case
         /// </summary>

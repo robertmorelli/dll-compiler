@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DependencyGraph\DependencyGraph.csproj" />
+    <ProjectReference Include="..\FormulaEvaluator\FormulaEvaluator.csproj" />
   </ItemGroup>
 
 </Project>
