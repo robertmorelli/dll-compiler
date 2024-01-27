@@ -41,11 +41,15 @@ namespace SpreadsheetUtilities
     /// </summary>
     public class DependencyGraph
     {
+        private readonly Dictionary<string, HashSet<string>> dependeeSets;
+        private readonly Dictionary<string, HashSet<string>> dependantSets;
         /// <summary>
         /// Creates an empty DependencyGraph.
         /// </summary>
         public DependencyGraph()
         {
+            dependantSets = [];
+            dependantSets = [];
         }
 
 
@@ -54,7 +58,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public int Size
         {
-            get { return 0; }
+            get { return dependantSets.Values.Select(s => s.Count).Sum(); }
         }
 
 
@@ -67,7 +71,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public int this[string s]
         {
-            get { return 0; }
+            get { return dependeeSets.ContainsKey(s) ? dependeeSets[s].Count : 0; }
         }
 
 
@@ -76,7 +80,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependents(string s)
         {
-            return false;
+            return dependantSets.ContainsKey(s) ? dependantSets[s].Count > 0 : false;
         }
 
 
@@ -85,7 +89,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependees(string s)
         {
-            return false;
+            return dependeeSets.ContainsKey(s) ? dependeeSets[s].Count > 0 : false;
         }
 
 
@@ -94,7 +98,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public IEnumerable<string> GetDependents(string s)
         {
-            return null;
+            return dependantSets.ContainsKey(s) ? dependantSets[s] : [];
         }
 
         /// <summary>
@@ -102,7 +106,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public IEnumerable<string> GetDependees(string s)
         {
-            return null;
+            return dependeeSets.ContainsKey(s) ? dependeeSets[s] : [];
         }
 
 
@@ -118,6 +122,16 @@ namespace SpreadsheetUtilities
         /// <param name="t"> t cannot be evaluated until s is</param>        /// 
         public void AddDependency(string s, string t)
         {
+            if (!dependeeSets.ContainsKey(s))
+            {
+                dependeeSets[s] = [t];
+                dependantSets[t] = [s];
+            }
+            else
+            {
+                dependeeSets[s].Add(t);
+                dependantSets[t].Add(s);
+            }
         }
 
 
@@ -128,6 +142,11 @@ namespace SpreadsheetUtilities
         /// <param name="t"></param>
         public void RemoveDependency(string s, string t)
         {
+            if (!dependeeSets.ContainsKey(s))
+            {
+                dependeeSets[s].Remove(t);
+                dependantSets[t].Remove(s);
+            }
         }
 
 
@@ -137,6 +156,19 @@ namespace SpreadsheetUtilities
         /// </summary>
         public void ReplaceDependents(string s, IEnumerable<string> newDependents)
         {
+            if (!dependeeSets.ContainsKey(s))
+            {
+                foreach (string t in dependeeSets[s])
+                {
+                    dependantSets[t].Remove(s);
+                }
+                dependeeSets[s].Clear();
+            }
+
+            foreach (string t in newDependents)
+            {
+                AddDependency(s, t);
+            }
         }
 
 
@@ -146,6 +178,19 @@ namespace SpreadsheetUtilities
         /// </summary>
         public void ReplaceDependees(string s, IEnumerable<string> newDependees)
         {
+            if (!dependantSets.ContainsKey(s))
+            {
+                foreach (string t in dependantSets[s])
+                {
+                    dependeeSets[t].Remove(s);
+                }
+                dependantSets[s].Clear();
+            }
+
+            foreach (string t in newDependees)
+            {
+                AddDependency(t, s);
+            }
         }
 
     }
