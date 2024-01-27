@@ -1,5 +1,7 @@
 ﻿// Worst Implementation of the dependency graph assignment
 // Version 4
+// Built by Robert Morelli for 3500
+// solution -> store everything twice so lookup is trivial
 
 namespace SpreadsheetUtilities
 {
@@ -32,14 +34,13 @@ namespace SpreadsheetUtilities
     /// </summary>
     public class DependencyGraph
     {
+        //store both directions for easy access "2n = n" in software after all
         private readonly Dictionary<string, HashSet<string>> dependeeSets = [];
         private readonly Dictionary<string, HashSet<string>> dependantSets = [];//yes they are ants (not typo)
         /// <summary>
         /// Creates an empty DependencyGraph.
         /// </summary>
-        public DependencyGraph()
-        {
-        }
+        public DependencyGraph() { }
 
 
         /// <summary>
@@ -48,7 +49,7 @@ namespace SpreadsheetUtilities
         public int Size
         {
             //get all the items. then count whats inside for each. then sum the contents
-            get { return dependantSets.Values.Select(s => s.Count).Sum(); }
+            get => dependantSets.Values.Select(s => s.Count).Sum();
         }
 
 
@@ -62,27 +63,19 @@ namespace SpreadsheetUtilities
         public int this[string s]
         {
             //if we have it return the count. if we dont i guess its zero
-            get { return dependeeSets.ContainsKey(s) ? dependeeSets[s].Count : 0; }
+            get => dependeeSets.ContainsKey(s) ? dependeeSets[s].Count : 0;
         }
 
 
         /// <summary>
         /// Reports whether dependents(s) is non-empty.
         /// </summary>
-        public bool HasDependents(string s)
-        {
-            //pretty self explanitory
-            return dependantSets.ContainsKey(s);
-        }
+        public bool HasDependents(string s) => dependantSets.ContainsKey(s);
 
         /// <summary>
         /// Reports whether dependees(s) is non-empty.
         /// </summary>
-        public bool HasDependees(string s)
-        {
-            //pretty self explanitory
-            return dependeeSets.ContainsKey(s);
-        }
+        public bool HasDependees(string s) => dependeeSets.ContainsKey(s);
 
         /// <summary>
         /// Enumerates dependents(s).
