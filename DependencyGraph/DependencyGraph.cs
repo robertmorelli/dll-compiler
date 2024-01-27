@@ -47,6 +47,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public int Size
         {
+            //get all the items. then count whats inside for each. then sum the contents
             get { return dependantSets.Values.Select(s => s.Count).Sum(); }
         }
 
@@ -60,6 +61,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public int this[string s]
         {
+            //if we have it return the count. if we dont i guess its zero
             get { return dependeeSets.ContainsKey(s) ? dependeeSets[s].Count : 0; }
         }
 
@@ -69,6 +71,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependents(string s)
         {
+            //pretty self explanitory
             return dependantSets.ContainsKey(s);
         }
 
@@ -77,6 +80,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependees(string s)
         {
+            //pretty self explanitory
             return dependeeSets.ContainsKey(s);
         }
 
@@ -85,6 +89,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public IEnumerable<string> GetDependents(string s)
         {
+            //pretty self explanitory
             return dependantSets.ContainsKey(s) ? dependantSets[s] : [];
         }
 
@@ -93,6 +98,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public IEnumerable<string> GetDependees(string s)
         {
+            //pretty self explanitory
             return dependeeSets.ContainsKey(s) ? dependeeSets[s] : [];
         }
 
@@ -108,6 +114,7 @@ namespace SpreadsheetUtilities
         /// <param name="t"> t cannot be evaluated until s is</param>        /// 
         public void AddDependency(string s, string t)
         {
+            //if it aint there add a spot. then add the thing in the spot we may or may not have made
             if (!dependantSets.ContainsKey(s)) dependantSets[s] = [];
             dependantSets[s].Add(t);
             if (!dependeeSets.ContainsKey(t)) dependeeSets[t] = [];
@@ -122,7 +129,9 @@ namespace SpreadsheetUtilities
         /// <param name="t"></param>
         public void RemoveDependency(string s, string t)
         {
+            //for simplicity we gaurentee it exists
             AddDependency(s, t);
+            //remove it then remove our spot for it if its not needed anymore
             dependantSets[s].Remove(t);
             if (dependantSets[s].Count == 0) dependantSets.Remove(s);
             dependeeSets[t].Remove(s);
@@ -136,9 +145,13 @@ namespace SpreadsheetUtilities
         /// </summary>
         public void ReplaceDependents(string s, IEnumerable<string> newDependents)
         {
+            //gaurentee existence. delete everything in it (symetry gaurenteed by RemoveDependency)
+            //add everything new
+            //delete if nothing new
             if (!dependantSets.ContainsKey(s)) dependantSets[s] = [];
             foreach (var t in dependantSets[s]) RemoveDependency(s, t);
             foreach (var t in newDependents) AddDependency(s, t);
+            if (!dependantSets.ContainsKey(s) && dependantSets[s].Count == 0) dependantSets.Remove(s);
         }
 
 
@@ -148,9 +161,13 @@ namespace SpreadsheetUtilities
         /// </summary>
         public void ReplaceDependees(string s, IEnumerable<string> newDependees)
         {
+            //gaurentee existence. delete everything in it (symetry gaurenteed by RemoveDependency)
+            //add everything new
+            //delete if nothing new
             if (!dependeeSets.ContainsKey(s)) dependeeSets[s] = [];
             foreach (var t in dependeeSets[s]) RemoveDependency(t, s);
             foreach (var t in newDependees) AddDependency(t, s);
+            if (!dependeeSets.ContainsKey(s) && dependeeSets[s].Count == 0) dependeeSets.Remove(s);
         }
     }
 
