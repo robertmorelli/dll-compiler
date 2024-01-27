@@ -12,6 +12,48 @@ namespace DevelopmentTests
     [TestClass()]
     public class DependencyGraphTests
     {
+        /// <summary>
+        /// General coverage case
+        /// </summary>
+        [TestMethod()]
+        public void DependencyGraphCoverageTest()
+        {
+            DependencyGraph t = new DependencyGraph();
+
+            //check every single method with and without state in our obj
+            Assert.AreEqual(0, t.Size);
+            Assert.AreEqual(0, t["a"]);
+            Assert.AreEqual(false, t.HasDependents("a"));
+            Assert.AreEqual(false, t.HasDependees("a"));
+            IEnumerable<string> t2 = t.GetDependents("a");
+            Assert.AreEqual(0, t2.Count());
+            t2 = t.GetDependees("a");
+            Assert.AreEqual(0, t2.Count());
+            t.RemoveDependency("a", "a");
+            Assert.AreEqual(0, t["a"]);
+            t.ReplaceDependents("a", []);
+            Assert.AreEqual(0, t["a"]);
+            t.ReplaceDependees("a", []);
+            Assert.AreEqual(0, t["a"]);
+
+            t.AddDependency("a", "a");
+
+            Assert.AreEqual(1, t.Size);
+            Assert.AreEqual(1, t["a"]);
+            Assert.AreEqual(true, t.HasDependents("a"));
+            Assert.AreEqual(true, t.HasDependees("a"));
+            t2 = t.GetDependents("a");
+            Assert.AreEqual(1, t2.Count());
+            t2 = t.GetDependees("a");
+            Assert.AreEqual(1, t2.Count());
+            t.RemoveDependency("a", "a");
+            Assert.AreEqual(0, t["a"]);
+            t.AddDependency("a", "a");
+            t.ReplaceDependents("a", ["a"]);
+            Assert.AreEqual(1, t["a"]);
+            t.ReplaceDependees("a", ["a"]);
+            Assert.AreEqual(1, t["a"]);
+        }
 
         /// <summary>
         ///Empty graph should contain nothing
