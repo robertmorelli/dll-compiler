@@ -1,3 +1,7 @@
+///<summary>
+///tests for the dependency graph
+/// first 20 tests should test every comination of paths through the code
+/// </summary>
 using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
