@@ -51,13 +51,8 @@ namespace SpreadsheetUtilities
             //get all the items. then count whats inside for each. then sum the contents
             get
             {
-                var sets = dependeeSets.Values.ToList();
-                int sum = 0;
-                foreach (var set in sets) {
-                    int setCount = sets.Count;
-                    sum += set.Count;
-                }
-                return sum;
+                int ret = dependantSets.Values.Select(s => s.Count).Sum();
+                return ret;
             }
         }
 
@@ -74,16 +69,8 @@ namespace SpreadsheetUtilities
             //if we have it return the count. if we dont i guess its zero
             get
             {
-                if (!dependeeSets.ContainsKey(s))
-                {
-                    return 0;
-                }
-                else
-                {
-                    var dependeeSet = dependeeSets[s];
-                    int dependeeSetCount = dependeeSet.Count;
-                    return dependeeSetCount;
-                }
+                int ret = dependeeSets.ContainsKey(s) ? dependeeSets[s].Count : 0;
+                return ret;
             }
         }
 
@@ -93,14 +80,8 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependents(string s)
         {
-            if (!dependantSets.ContainsKey(s))
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
+            bool ret = dependantSets.ContainsKey(s);
+            return ret;
         }
 
         /// <summary>
@@ -108,14 +89,8 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependees(string s)
         {
-            if (!dependeeSets.ContainsKey(s))
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
+            bool ret = dependeeSets.ContainsKey(s);
+            return ret;
         }
 
         /// <summary>
@@ -124,7 +99,7 @@ namespace SpreadsheetUtilities
         public IEnumerable<string> GetDependents(string s)
         {
             //pretty self explanitory
-            if(HasDependents(s))
+            if (HasDependents(s))
             {
                 return dependantSets[s];
             }
