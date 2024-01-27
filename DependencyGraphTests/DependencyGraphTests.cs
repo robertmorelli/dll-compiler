@@ -4,9 +4,10 @@
 ///they are at the top
 ///the rest of the tests are from the starter stuff
 /// </summary>
-using System.Diagnostics;
-using SpreadsheetUtilities;
+using System;
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SpreadsheetUtilities;
 
 
 namespace DevelopmentTests
