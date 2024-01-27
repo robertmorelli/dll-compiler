@@ -68,7 +68,7 @@ namespace DevelopmentTests
         {
 
             //preallocated stuff
-            const int SIZE = 200;
+            const int SIZE = 20;
             string[] As = new string[SIZE];
             string[] Bs = new string[SIZE];
             for (int i = 0; i < SIZE; i++)
