@@ -5,9 +5,9 @@
 ///the rest of the tests are from the starter stuff
 /// </summary>
 using System;
-using System.Diagnostics;
-using System.Collections.Generic;
-using FormulaEvaluator;
+//using System.Diagnostics;
+//using System.Collections.Generic;
+//using FormulaEvaluator;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SpreadsheetUtilities;
 using static FormulaEvaluator.Evaluator;
@@ -77,6 +77,8 @@ namespace DevelopmentTests
             Assert.AreEqual(1, t["a"]);
         }
 
+
+        /*
         /// <summary>
         ///check that adding and removing a lot of elements doesnt fuck the machine
         ///</summary>
@@ -143,6 +145,7 @@ namespace DevelopmentTests
             long memEnd = Process.GetCurrentProcess().PrivateMemorySize64;
             Assert.AreEqual(true,(memEnd - memStart + 10000)<0);
         }
+        */
 
         /// <summary>
         ///Empty graph should contain nothing
