@@ -51,8 +51,13 @@ namespace SpreadsheetUtilities
             //get all the items. then count whats inside for each. then sum the contents
             get
             {
-                int ret = dependantSets.Values.Select(s => s.Count).Sum();
-                return ret;
+                var sets = dependeeSets.Values.ToList();
+                int sum = 0;
+                foreach (var set in sets) {
+                    int setCount = sets.Count;
+                    sum += set.Count;
+                }
+                return sum;
             }
         }
 
@@ -69,8 +74,16 @@ namespace SpreadsheetUtilities
             //if we have it return the count. if we dont i guess its zero
             get
             {
-                int ret = dependeeSets.ContainsKey(s) ? dependeeSets[s].Count : 0;
-                return ret;
+                if (!dependeeSets.ContainsKey(s))
+                {
+                    return 0;
+                }
+                else
+                {
+                    var dependeeSet = dependeeSets[s];
+                    int dependeeSetCount = dependeeSet.Count;
+                    return dependeeSetCount;
+                }
             }
         }
 
@@ -80,8 +93,14 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependents(string s)
         {
-            bool ret = dependantSets.ContainsKey(s);
-            return ret;
+            if (!dependantSets.ContainsKey(s))
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
         }
 
         /// <summary>
@@ -89,8 +108,14 @@ namespace SpreadsheetUtilities
         /// </summary>
         public bool HasDependees(string s)
         {
-            bool ret = dependeeSets.ContainsKey(s);
-            return ret;
+            if (!dependeeSets.ContainsKey(s))
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
         }
 
         /// <summary>
