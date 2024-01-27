@@ -21,6 +21,8 @@ namespace DevelopmentTests
         public void DependencyGraphCoverageTest()
         {
             DependencyGraph t = new DependencyGraph();
+
+            //check every single method with and without state in our obj
             Assert.AreEqual(0, t.Size);
             Assert.AreEqual(0, t["a"]);
             Assert.AreEqual(false, t.HasDependents("a"));
@@ -62,6 +64,7 @@ namespace DevelopmentTests
         public void MemLeakTest()
         {
 
+            //preallocated stuff
             const int SIZE = 200;
             string[] As = new string[SIZE];
             string[] Bs = new string[SIZE];
@@ -75,6 +78,9 @@ namespace DevelopmentTests
             DependencyGraph t = new DependencyGraph();
             int preventOptimizations = 0;
 
+
+            //add and remove stuff
+
             for (int j = 0; j < 3; j++)
             {
                 for (int i = 0; i < SIZE; i++)
@@ -89,6 +95,7 @@ namespace DevelopmentTests
                 }
             }
 
+            //add stuff to bias the test (its semi-random so this is necessary)
             for (int i = 0; i < SIZE; i++)
             {
                 t.AddDependency(As[i], Bs[i]);
@@ -97,6 +104,7 @@ namespace DevelopmentTests
 
             long memStart = Process.GetCurrentProcess().PrivateMemorySize64;
 
+            //do the same stuff
             for (int j = 0; j < 3; j++)
             {
                 for (int i = 0; i < SIZE; i++)
@@ -111,8 +119,9 @@ namespace DevelopmentTests
                 }
             }
 
+            //check that we didnt increase the memory by an unreasonable amount
             long memEnd = Process.GetCurrentProcess().PrivateMemorySize64;
-            Assert.AreEqual(true,(memEnd - memStart)<0);
+            Assert.AreEqual(true,(memEnd - memStart + 10000)<0);
         }
 
         /// <summary>
