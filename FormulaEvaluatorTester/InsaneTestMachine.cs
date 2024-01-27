@@ -32,8 +32,8 @@ namespace FormulaEvaluatorTester
         /// Execute a bunch of test cases. use generator to make valid strings and then add problems for fail cases.
         /// Not sure if this counts as a hand-written test. I did hand write this code.
         /// </summary>
-        /// <param name="args">ignore</param>
-        static void Main(string[] args)
+        /// <param name="_">ignore</param>
+        static void Main(string[] _)
         {
             Dictionary<string, int> lookupDict = new Dictionary<string, int>();
             Lookup lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
