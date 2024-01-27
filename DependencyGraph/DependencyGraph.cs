@@ -41,15 +41,13 @@ namespace SpreadsheetUtilities
     /// </summary>
     public class DependencyGraph
     {
-        private readonly Dictionary<string, HashSet<string>> dependeeSets;
-        private readonly Dictionary<string, HashSet<string>> dependantSets;
+        private readonly Dictionary<string, HashSet<string>> dependeeSets = [];
+        private readonly Dictionary<string, HashSet<string>> dependantSets = [];
         /// <summary>
         /// Creates an empty DependencyGraph.
         /// </summary>
         public DependencyGraph()
         {
-            dependantSets = [];
-            dependantSets = [];
         }
 
 
@@ -98,7 +96,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public IEnumerable<string> GetDependents(string s)
         {
-            return dependantSets.ContainsKey(s) ? dependantSets[s] : [];
+            return (dependantSets.ContainsKey(s) ? dependantSets[s] : []).AsEnumerable();
         }
 
         /// <summary>
@@ -106,7 +104,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public IEnumerable<string> GetDependees(string s)
         {
-            return dependeeSets.ContainsKey(s) ? dependeeSets[s] : [];
+            return (dependeeSets.ContainsKey(s) ? dependeeSets[s] : []).AsEnumerable();
         }
 
 
@@ -122,16 +120,22 @@ namespace SpreadsheetUtilities
         /// <param name="t"> t cannot be evaluated until s is</param>        /// 
         public void AddDependency(string s, string t)
         {
-            if (!dependeeSets.ContainsKey(s))
+            if (dependantSets.ContainsKey(s))
             {
-                dependeeSets[s] = [t];
-                dependantSets[t] = [s];
+                dependantSets[s].Add(t);
+            } else {
+                dependantSets[s] = [t];
+            }
+
+            if (dependeeSets.ContainsKey(t))
+            {
+                dependeeSets[t].Add(s);
             }
             else
             {
-                dependeeSets[s].Add(t);
-                dependantSets[t].Add(s);
+                dependeeSets[t] = [s];
             }
+            
         }
 
 
@@ -142,10 +146,27 @@ namespace SpreadsheetUtilities
         /// <param name="t"></param>
         public void RemoveDependency(string s, string t)
         {
-            if (!dependeeSets.ContainsKey(s))
+            if (dependantSets.ContainsKey(s))
             {
-                dependeeSets[s].Remove(t);
-                dependantSets[t].Remove(s);
+                if (dependantSets[s].Contains(t))
+                {
+                    dependantSets[s].Remove(t);
+                    if (dependantSets[s].Count == 0)
+                    {
+                        dependantSets.Remove(s);
+                    }
+                }
+            }
+            if (dependeeSets.ContainsKey(t))
+            {
+                if (dependeeSets[t].Contains(s))
+                {
+                    dependeeSets[t].Remove(s);
+                    if (dependeeSets[t].Count == 0)
+                    {
+                        dependeeSets.Remove(t);
+                    }
+                }
             }
         }
 
@@ -156,15 +177,13 @@ namespace SpreadsheetUtilities
         /// </summary>
         public void ReplaceDependents(string s, IEnumerable<string> newDependents)
         {
-            if (!dependeeSets.ContainsKey(s))
+            if (dependantSets.ContainsKey(s))
             {
-                foreach (string t in dependeeSets[s])
+                foreach (string t in dependantSets[s])
                 {
-                    dependantSets[t].Remove(s);
+                    RemoveDependency(s, t);
                 }
-                dependeeSets[s].Clear();
             }
-
             foreach (string t in newDependents)
             {
                 AddDependency(s, t);
@@ -178,19 +197,39 @@ namespace SpreadsheetUtilities
         /// </summary>
         public void ReplaceDependees(string s, IEnumerable<string> newDependees)
         {
-            if (!dependantSets.ContainsKey(s))
+            if (dependeeSets.ContainsKey(s))
             {
-                foreach (string t in dependantSets[s])
+                foreach (string t in dependeeSets[s])
                 {
-                    dependeeSets[t].Remove(s);
+                    RemoveDependency(t, s);
                 }
-                dependantSets[s].Clear();
             }
-
             foreach (string t in newDependees)
             {
-                AddDependency(t, s);
+                AddDependency(t,s);
             }
+        }
+
+        private void printAll() {
+            Console.Write("ant");
+            foreach (string s in dependantSets.Keys)
+            {
+                Console.Write("\n:: " + s + " | ");
+                foreach (string t in dependantSets[s])
+                {
+                    Console.Write(t);
+                }
+            }
+            Console.Write("\nees");
+            foreach (string s in dependeeSets.Keys)
+            {
+                Console.Write("\n:: " + s + " | ");
+                foreach (string t in dependeeSets[s])
+                {
+                    Console.Write(t);
+                }
+            }
+            Console.WriteLine();
         }
 
     }
