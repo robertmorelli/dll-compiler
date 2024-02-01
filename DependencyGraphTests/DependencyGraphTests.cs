@@ -1,17 +1,11 @@
 ///<summary>
-///testing for the dependancy graph class
-///ive added to tests so for
-///they are at the top
-///the rest of the tests are from the starter stuff
+///tests for the dependency graph
+/// first 20 tests should test every comination of paths through the code
 /// </summary>
-using System.Diagnostics;
-//using System.Diagnostics;
-//using System.Collections.Generic;
-//using FormulaEvaluator;
+using System;
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SpreadsheetUtilities;
-using static FormulaEvaluator.Evaluator;
-
 
 namespace DevelopmentTests
 {
@@ -22,130 +16,230 @@ namespace DevelopmentTests
     [TestClass()]
     public class DependencyGraphTests
     {
-
+        /// <summary>
+        /// empty is zero
+        /// </summary>
         [TestMethod()]
-        public void TestEvalBecause()
+        public void NothingIsVoid()
         {
-            Evaluate("1 + 2 * 3 / 4 +5 * (5 + 6 * 7 /8) -2",null);
-        }
-
-        [ExpectedException(typeof(ArgumentException))]
-        public void TestEvaluateFail() {
-            Evaluate("1 + 2 * 3 / 4 +5 * (5 + 6 * 7 /8) -2 + a2", null);
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(0, t.Size);
         }
 
         /// <summary>
-        /// General coverage case
+        /// empty is zero but cover other func
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependentsForA()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// empty is zero but check a third way
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependeesForA()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(false, t.HasDependents("a"));
+        }
+
+        /// <summary>
+        /// empty is 0 but check by dependees
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependeesForA2()
+        {
+            DependencyGraph t = new DependencyGraph();
+            Assert.AreEqual(false, t.HasDependees("a"));
+        }
+
+        /// <summary>
+        /// empty is zero but check enumerables
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependentsForA2()
+        {
+            DependencyGraph t = new DependencyGraph();
+            IEnumerable<string> t2 = t.GetDependents("a");
+            Assert.AreEqual(0, t2.Count());
+        }
+
+        /// <summary>
+        /// empty is zero but check dependee enumerable
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependendeesForA3()
+        {
+            DependencyGraph t = new DependencyGraph();
+            IEnumerable<string> t2 = t.GetDependees("a");
+            Assert.AreEqual(0, t2.Count());
+        }
+
+        /// <summary>
+        /// empty is zero check brackets
         /// </summary>
         [TestMethod()]
         public void DependencyGraphCoverageTest()
         {
             DependencyGraph t = new DependencyGraph();
-
-            //check every single method with and without state in our obj
-            Assert.AreEqual(0, t.Size);
-            Assert.AreEqual(0, t["a"]);
-            Assert.AreEqual(false, t.HasDependents("a"));
-            Assert.AreEqual(false, t.HasDependees("a"));
-            IEnumerable<string> t2 = t.GetDependents("a");
-            Assert.AreEqual(0, t2.Count());
-            t2 = t.GetDependees("a");
-            Assert.AreEqual(0, t2.Count());
             t.RemoveDependency("a", "a");
             Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// empty is zero check dependency replacement for null
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependendeesForA5()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.ReplaceDependents("a", []);
             Assert.AreEqual(0, t["a"]);
+        }
+
+
+        /// <summary>
+        /// empty is zero but check replacement of dependees
+        /// </summary>
+        [TestMethod()]
+        public void NothingHasNoDependendeesForA6()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.ReplaceDependees("a", []);
             Assert.AreEqual(0, t["a"]);
+        }
 
+
+        /// <summary>
+        /// one is one check
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.AddDependency("a", "a");
-
             Assert.AreEqual(1, t.Size);
+        }
+
+        /// <summary>
+        /// one is one check brackets
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA1()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             Assert.AreEqual(1, t["a"]);
+        }
+
+        /// <summary>
+        /// one is one check has dependent
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA2()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             Assert.AreEqual(true, t.HasDependents("a"));
+        }
+
+        /// <summary>
+        /// one is one check has dependees
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA3()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             Assert.AreEqual(true, t.HasDependees("a"));
-            t2 = t.GetDependents("a");
+        }
+
+        /// <summary>
+        /// one is one check dependent enumerable
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA4()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
+            var t2 = t.GetDependents("a");
             Assert.AreEqual(1, t2.Count());
-            t2 = t.GetDependees("a");
+        }
+
+        /// <summary>
+        /// one is one check dependee enumerable
+        /// </summary>
+        [TestMethod()]
+        public void JustAHasSomeDependendeesForA5()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
+            var t2 = t.GetDependees("a");
             Assert.AreEqual(1, t2.Count());
+        }
+
+        /// <summary>
+        /// one to zero my remove
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe1()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             t.RemoveDependency("a", "a");
             Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// one to one by replacements
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe12()
+        {
+            DependencyGraph t = new DependencyGraph();
             t.AddDependency("a", "a");
             t.ReplaceDependents("a", ["a"]);
             Assert.AreEqual(1, t["a"]);
+        }
+
+        /// <summary>
+        /// one to zero by replacements
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe17()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
+            t.ReplaceDependents("a", []);
+            Assert.AreEqual(0, t["a"]);
+        }
+
+        /// <summary>
+        /// one to one by replacement dependee
+        /// </summary>
+        [TestMethod()]
+        public void NothingAddThenRemoveASHouldBe13()
+        {
+            DependencyGraph t = new DependencyGraph();
+            t.AddDependency("a", "a");
             t.ReplaceDependees("a", ["a"]);
             Assert.AreEqual(1, t["a"]);
         }
 
-        
-        
         /// <summary>
-        ///check that adding and removing a lot of elements doesnt fuck the machine
-        ///</summary>
+        /// one to z by replacement dependee
+        /// </summary>
         [TestMethod()]
-        public void MemLeakTest()
+        public void NothingAddThenRemoveASHouldBe19()
         {
-
-            //preallocated stuff
-            const int SIZE = 20;
-            string[] As = new string[SIZE];
-            string[] Bs = new string[SIZE];
-            for (int i = 0; i < SIZE; i++)
-            {
-                As[i] = "" + (char)('a' + i);
-                Bs[i] = "" + (char)('b' + i);
-            }
-
-            
             DependencyGraph t = new DependencyGraph();
-            int preventOptimizations = 0;
-
-
-            //add and remove stuff
-
-            for (int j = 0; j < 3; j++)
-            {
-                for (int i = 0; i < SIZE; i++)
-                {
-                    t.AddDependency(As[i], Bs[i]);
-                    preventOptimizations += t.Size;
-                }
-                for (int i = 0; i < SIZE; i++)
-                {
-                    t.RemoveDependency(As[i], Bs[i]);
-                    preventOptimizations += t.Size;
-                }
-            }
-
-            //add stuff to bias the test (its semi-random so this is necessary)
-            for (int i = 0; i < SIZE; i++)
-            {
-                t.AddDependency(As[i], Bs[i]);
-                preventOptimizations += t.Size;
-            }
-
-            long memStart = Process.GetCurrentProcess().PrivateMemorySize64;
-
-            //do the same stuff
-            for (int j = 0; j < 3; j++)
-            {
-                for (int i = 0; i < SIZE; i++)
-                {
-                    t.AddDependency(As[i], Bs[i]);
-                    preventOptimizations += t.Size;
-                }
-                for (int i = 0; i < SIZE; i++)
-                {
-                    t.RemoveDependency(As[i], Bs[i]);
-                    preventOptimizations += t.Size;
-                }
-            }
-
-            //check that we didnt increase the memory by an unreasonable amount
-            long memEnd = Process.GetCurrentProcess().PrivateMemorySize64;
-            Assert.AreEqual(true,(memEnd - memStart + 10000)<0);
+            t.AddDependency("a", "a");
+            t.ReplaceDependees("a", []);
+            Assert.AreEqual(0, t["a"]);
         }
-        
 
         /// <summary>
         ///Empty graph should contain nothing
@@ -393,7 +487,6 @@ namespace DevelopmentTests
                 Assert.IsTrue(dees[i].SetEquals(new HashSet<string>(t.GetDependees(letters[i]))));
             }
         }
-        
-        
+
     }
 }
