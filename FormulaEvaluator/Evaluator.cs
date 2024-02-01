@@ -23,13 +23,12 @@ using System.Text.RegularExpressions;
 /// </summary>
 
 
-
 namespace FormulaEvaluator
 {
     /// <summary>
     /// Class to hold our one useful function
     /// </summary>
-    public class Evaluator
+    public partial class Evaluator
     {
         private delegate void TokenProcFunc(string token);
         public delegate int Lookup(String variable_name);
@@ -52,21 +51,19 @@ namespace FormulaEvaluator
         public static int Evaluate(String expression,
                                    Lookup variableEvaluator)
         {
-            //stack for numbers in exp
             var valueStack = new Stack<int>();
-            //stack for operators
             var operatorStack = new Stack<string>();
             //dictionary of correct action items
             var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, variableEvaluator);
-            expression = string.Format("({0})*1",expression); //gaurentees one value at end (removes some checking)
+            expression = string.Format("({0})*1", expression); //gaurentees one value at end (removes some checking)
             Regex
-                .Split(expression, findTokenRegex.ToString()) //spllit expression into tokens
+                .Split(expression, findTokenRegex().ToString()) //spllit expression into tokens
                 .ToList().ForEach((token) =>
                     //for each token determine the correct action to take (or error action)
                     tokenProcessor
                         .AsEnumerable()
                         .FirstOrDefault(
-                            (keyValuePair) => 
+                            (keyValuePair) =>
                                 keyValuePair.Key.IsMatch(token)
                             , errorTokenAction)
                         //do the action that was determined appropriate for the token
@@ -83,26 +80,16 @@ namespace FormulaEvaluator
         //all the required matching. obv some of these could be direct string comp
         //but its fine cuz uniformity
         //each one of these identifies some subset of potention tokens
-        private static Regex findTokenRegex =           new Regex("\\s*(\\(|\\)|-|\\+|\\*|/)\\s*");
-        private static Regex isWhiteSpaceRegex =        new Regex("^\\s*$");
-        private static Regex isIntRegex =               new Regex("^\\d+$");
-        private static Regex isVariableRegex =          new Regex("^\\w+\\d+$");
-        private static Regex isAddativeRegex =          new Regex("^\\+|-$");
-        private static Regex isAddRegex =               new Regex("^\\+$");
-        private static Regex isMultiplicativeRegex =    new Regex("^\\*|/$");
-        private static Regex isMultRegex =              new Regex("^\\*$");
-        private static Regex isOpeningParenRegex =      new Regex("^\\($");
-        private static Regex isClosingParenRegex =      new Regex("^\\)$");
-        private static Regex isAnythingRegex =          new Regex("^.*$");
-        private static Regex isZeros =                  new Regex("^0+$");
 
-        private static TokenProcFunc nothingFunc =      (token) => { };
-        private static TokenProcFunc everythingFunc =   (token) => {
+
+        private readonly static TokenProcFunc nothingFunc = (token) => { };
+        private readonly static TokenProcFunc everythingFunc = (token) =>
+        {
             throw new ArgumentException(string.Format("Could not identify token ({0})", token));
         };
 
-        private static KeyValuePair<Regex, TokenProcFunc>  errorTokenAction =
-                                                         new KeyValuePair<Regex, TokenProcFunc>(isAnythingRegex, everythingFunc);
+        private static KeyValuePair<Regex, TokenProcFunc> errorTokenAction =
+                                                         new KeyValuePair<Regex, TokenProcFunc>(isAnythingRegex(), everythingFunc);
 
 
         /// <summary>
@@ -129,7 +116,8 @@ namespace FormulaEvaluator
         /// This function will not throw errors, the returned delegates will throw errors
         /// for improper formulas
         /// </exception>
-        private static Dictionary<Regex, TokenProcFunc> generateTokenProcessorDictionary(Stack<int> valueStack, Stack<string> operatorStack, Lookup variableEvaluator) {
+        private static Dictionary<Regex, TokenProcFunc> generateTokenProcessorDictionary(Stack<int> valueStack, Stack<string> operatorStack, Lookup variableEvaluator)
+        {
 
             /// <summary>
             /// If * or / is at the top of the operator stack, pop the value stack,
@@ -138,11 +126,12 @@ namespace FormulaEvaluator
             /// 
             /// Otherwise, push t onto the value stack.
             /// </summary>
-            TokenProcFunc intFunc = (token) => {
-                if (operatorStack.Count > 0 && isMultiplicativeRegex.IsMatch(operatorStack.Peek()))
+            void intFunc(string token)
+            {
+                if (operatorStack.Count > 0 && isMultiplicativeRegex().IsMatch(operatorStack.Peek()))
                     if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
-                    else if (isZeros.IsMatch(token)) throw new ArgumentException("Division by zero");
-                    else if (isMultRegex.IsMatch(operatorStack.Pop()))
+                    else if (isZeros().IsMatch(token)) throw new ArgumentException("Division by zero");
+                    else if (isMultRegex().IsMatch(operatorStack.Pop()))
                         valueStack.Push(valueStack.Pop() * int.Parse(token));
                     else
                         valueStack.Push(valueStack.Pop() / int.Parse(token));
@@ -150,28 +139,28 @@ namespace FormulaEvaluator
 
                     valueStack.Push(int.Parse(token));
 
-            };
+            }
 
             /// <summary>
             /// Proceed as above, using the looked-up value of t instead of t
             /// </summary>
-            TokenProcFunc varFunc = (token) => {
+            void varFunc(string token)
+            {
                 int? val;
                 try
                 {
                     val = variableEvaluator(token);
-                    if (val == null) throw new ArgumentException();
+                    if (val == null) throw new ArgumentException("your variable sucks");
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //rethrow same error in some cases. cry about it
-                    throw new ArgumentException();
+                    throw new ArgumentException("your variable evaluator sucks");
                 }
                 //zero never happens. idk how c# nullable promotion works. maybe try crying and ill change it
                 intFunc(val.ToString() ?? "0");
-                
-            };
 
+            }
             /// <summary>
             /// "If + or - is at the top of the operator stack,
             /// pop the value stack twice and the operator stack once,
@@ -180,15 +169,16 @@ namespace FormulaEvaluator
             /// 
             /// Push t onto the operator stack"
             /// </summary>
-            TokenProcFunc addativeFunc = (token) => {
-                if (operatorStack.Count > 0 && isAddativeRegex.IsMatch(operatorStack.Peek()))
+            void addativeFunc(string token)
+            {
+                if (operatorStack.Count > 0 && isAddativeRegex().IsMatch(operatorStack.Peek()))
                     if (valueStack.Count < 2) throw new ArgumentException("Two adds in a row");
-                    else if (isAddRegex.IsMatch(operatorStack.Pop()))
+                    else if (isAddRegex().IsMatch(operatorStack.Pop()))
                         valueStack.Push(valueStack.Pop() + valueStack.Pop());
                     else
                         valueStack.Push(valueStack.Pop() - valueStack.Pop());
                 operatorStack.Push(token);
-            };
+            }
 
 
             /// <summary>
@@ -196,7 +186,7 @@ namespace FormulaEvaluator
             /// 
             /// also unnecessary func wrapper. try crying if you dont like it
             /// </summary>
-            TokenProcFunc multiplicativefunc = (token) => operatorStack.Push(token);
+            void multiplicativefunc(string token) => operatorStack.Push(token);
 
 
             /// <summary>
@@ -204,7 +194,7 @@ namespace FormulaEvaluator
             /// 
             /// duplicate of mult. cry about it
             /// </summary>
-            TokenProcFunc openParenFunc = (token) => operatorStack.Push(token);
+            void openParenFunc(string token) => operatorStack.Push(token);
 
             /// <summary>
             /// Do all three of these steps in order:
@@ -221,31 +211,46 @@ namespace FormulaEvaluator
             ///     the popped operator to the popped numbers. Push the
             ///     result onto the value stack.
             /// </summary>
-            TokenProcFunc closeParenFunc = (token) => {
-                if (operatorStack.Count > 1 && isAddativeRegex.IsMatch(operatorStack.Peek()))
+            void closeParenFunc(string token)
+            {
+                if (operatorStack.Count > 1 && isAddativeRegex().IsMatch(operatorStack.Peek()))
                     if (valueStack.Count < 2) throw new ArgumentException("Not enough items to add within parenthesis");
-                    else if (isAddRegex.IsMatch(operatorStack.Pop()))
+                    else if (isAddRegex().IsMatch(operatorStack.Pop()))
                         valueStack.Push(valueStack.Pop() + valueStack.Pop());
                     else
                         valueStack.Push(valueStack.Pop() - valueStack.Pop());
-                if (operatorStack.Count == 0 || !isOpeningParenRegex.IsMatch(operatorStack.Pop()))
+                if (operatorStack.Count == 0 || !isOpeningParenRegex().IsMatch(operatorStack.Pop()))
                     throw new ArgumentException("Unmatched closing parenthesis");
 
-                if (operatorStack.Count > 0 && isMultiplicativeRegex.IsMatch(operatorStack.Peek()))
+                if (operatorStack.Count > 0 && isMultiplicativeRegex().IsMatch(operatorStack.Peek()))
                     intFunc(valueStack.Pop().ToString());
-            };
+            }
 
             // dictionary of regex matched with correct response.
             return new Dictionary<Regex, TokenProcFunc> {
-                {isWhiteSpaceRegex, nothingFunc},
-                {isIntRegex, intFunc },
-                {isVariableRegex, varFunc },
-                {isAddativeRegex, addativeFunc },
-                {isMultiplicativeRegex, multiplicativefunc },
-                {isOpeningParenRegex, openParenFunc },
-                {isClosingParenRegex, closeParenFunc },
+                {isWhiteSpaceRegex(), nothingFunc},
+                {isIntRegex(), intFunc },
+                {isVariableRegex(), varFunc },
+                {isAddativeRegex(), addativeFunc },
+                {isMultiplicativeRegex(), multiplicativefunc },
+                {isOpeningParenRegex(), openParenFunc },
+                {isClosingParenRegex(), closeParenFunc },
             };
 
         }
+
+
+        [GeneratedRegex("\\s*(\\(|\\)|-|\\+|\\*|/)\\s*")] private static partial Regex findTokenRegex();
+        [GeneratedRegex("^(\\s*)$")] private static partial Regex isWhiteSpaceRegex();
+        [GeneratedRegex("^(\\d+)$")] private static partial Regex isIntRegex();
+        [GeneratedRegex("^(\\w+\\d+)$")] private static partial Regex isVariableRegex();
+        [GeneratedRegex("^(\\+|-$)")] private static partial Regex isAddativeRegex();
+        [GeneratedRegex("^(\\+)$")] private static partial Regex isAddRegex();
+        [GeneratedRegex("^(\\*|/)$")] private static partial Regex isMultiplicativeRegex();
+        [GeneratedRegex("^(\\*)$")] private static partial Regex isMultRegex();
+        [GeneratedRegex("^(\\()$")] private static partial Regex isOpeningParenRegex();
+        [GeneratedRegex("^(\\))$")] private static partial Regex isClosingParenRegex();
+        [GeneratedRegex("^(.*)$")] private static partial Regex isAnythingRegex();
+        [GeneratedRegex("^(0+)$")] private static partial Regex isZeros();
     }
 }
