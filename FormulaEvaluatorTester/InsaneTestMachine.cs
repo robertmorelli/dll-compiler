@@ -20,8 +20,10 @@
 
 
 using FormulaEvaluator;
+using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
 using static FormulaEvaluator.Evaluator;
+using static SpreadsheetUtilities.Utility;
 
 
 namespace FormulaEvaluatorTester
@@ -35,8 +37,14 @@ namespace FormulaEvaluatorTester
         /// <param name="_">ignore</param>
         static void Main(string[] _)
         {
+
+
+
+
+            Utility.test();
+            return;
             Dictionary<string, int> lookupDict = new Dictionary<string, int>();
-            Lookup lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
+            Evaluator.Lookup lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
             Random random = new Random();
             string testCase;
             int result;

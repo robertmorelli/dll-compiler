@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FormulaEvaluator\FormulaEvaluator.csproj" />
+    <ProjectReference Include="..\Formula\Formula.csproj" />
   </ItemGroup>
 
 </Project>
