@@ -19,161 +19,18 @@ using System.Text.RegularExpressions;
 
 namespace SpreadsheetUtilities
 {
-    internal enum TokenType
-    {
-        multiplicative = 0,
-        additive = 1,
-        var = 2,
-        val = 3,
-        openParen = 4,
-        closedParen = 5,
-        erroneous = 6,
-    }
-    // TODO: convert x / K type expressions to x * (1/K)
-    internal struct TokenNode
-    {
-        public TokenNode(Token primary, TokenNode? left, TokenNode? right) {
-            this.primary = primary;
-            _leftRef = new(left);
-            _rightRef = new(right);
-            constValue = primary.isImm ?
-            double.TryParse(primary.primativeString, out double d) ?
-                d :
-                double.NaN :
-            double.NaN;
-            constValue = GetConstValue();
-        }
-        public readonly string ToString(Func<string, double>? lo = null, int depth = 0)
-        {
-            lo ??= (_) => 1;
-            return
-                "\n" + new string(' ', depth * 4) +
-                (LeftChild != null ? "(" : "") +
-                primary.primativeString.ToString() +
-                ( HasConstValue ? " K" + (LeftChild != null ? " :" + constValue : "") : "" ) +
-                LeftChild?.ToString(lo, depth + 1) +
-                RightChild?.ToString(lo, depth + 1) +
-                (LeftChild != null ? ("\n" + new string(' ', depth * 4) + ")") : "");
-        }
-
-        //who said there were no pointers in "safe" c#?
-        internal class ReferenceLMAO(TokenNode? tn) { public TokenNode? tn = tn; }
-        private readonly ReferenceLMAO _leftRef;
-        private readonly ReferenceLMAO _rightRef;
-
-        public readonly Token primary;
-        public readonly TokenNode? LeftChild { get => _leftRef.tn; }
-        public readonly TokenNode? RightChild { get => _rightRef.tn; }
-        public readonly bool HasConstValue { get => !double.IsNaN(constValue); }
-        public double constValue;
-
-        public readonly double GetConstValue()
-        {
-            if (HasConstValue) return constValue;
-            var leftConstVal = LeftChild?.GetConstValue() ?? double.NaN;
-            var rightConstVal = RightChild?.GetConstValue() ?? double.NaN;
-            return primary.primativeString switch
-            {
-                "*" => rightConstVal * leftConstVal,
-                "/" => rightConstVal / leftConstVal,
-                "+" => rightConstVal + leftConstVal,
-                "-" => rightConstVal - leftConstVal,
-                _ => double.NaN,
-            };
-        }
-
-        public readonly double Value(Func<string, double> lookup)
-        {
-            if (HasConstValue) return constValue;
-            if (primary.isVar) return lookup(primary.primativeString);
-            if (LeftChild == null || RightChild == null) return double.NaN;
-            var leftValue = LeftChild?.Value(lookup) ?? double.NaN;
-            var rightValue = RightChild?.Value(lookup) ?? double.NaN;
-            return primary.primativeString switch
-            {
-                "*" => leftValue * rightValue,
-                "/" => leftValue / rightValue,
-                "+" => leftValue + rightValue,
-                "-" => leftValue - rightValue,
-                _ => double.NaN,
-            };
-        }
-    }
-
-
-    internal struct Token
-    {
-        public bool IsOperation { get => IsAddative || IsMultiplicative || IsParens; }
-        public readonly bool IsAddative { get => isAdd || isSub; }
-        public bool isAdd = false;
-        public bool isSub = false;
-        public readonly bool IsMultiplicative { get => isMult || isDiv; }
-        public bool isMult = false;
-        public bool isDiv = false;
-        public bool IsValue { get => isImm || isVar; }
-        public bool isImm = false;
-        public bool isVar = false;
-        public bool IsParens { get => isLParens || isRParens; }
-        public bool isLParens = false;
-        public bool isRParens = false;
-        public string primativeString;
-        public Token(string primative)
-        {
-            if (isImm = isImm || Utility.isDouble().IsMatch(primative))
-            {
-                primativeString = double.TryParse(primative, out double d) ?
-                    d.ToString() :
-                    primative;
-            }
-            else
-            {
-                primativeString = primative;
-            }
-            isVar = Utility.isVariableRegex().IsMatch(primative);
-            isDiv = Utility.isDivRegex().IsMatch(primative);
-            isMult = Utility.isMultRegex().IsMatch(primative);
-            isAdd = Utility.isAddRegex().IsMatch(primative);
-            isSub = Utility.isSubRegex().IsMatch(primative);
-            isLParens = Utility.isOpeningParenRegex().IsMatch(primative);
-            isRParens = Utility.isClosingParenRegex().IsMatch(primative);
-        }
-        public readonly TokenType Type
-        {
-            get
-            {
-                if (IsAddative) return TokenType.additive;
-                if (IsMultiplicative) return TokenType.multiplicative;
-                if (isVar) return TokenType.var;
-                if (isLParens) return TokenType.openParen;
-                if (isRParens) return TokenType.closedParen;
-                if (isImm) return TokenType.val;
-                return TokenType.erroneous;
-            }
-        }
-    }
 
     public static partial class Utility
     {
         public static void test()
         {
             // Example usage
+            var f = new Formula("(4+5+6)-2/2/0");
+            Console.WriteLine("---");
+            Console.WriteLine(f.Evaluate((_) => 1));
+            Console.WriteLine("---");
 
-            var valueStack = new Stack<TokenNode>();
-            var operatorStack = new Stack<Token>();
-            //dictionary of correct action items
-            var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, (e) => 1);
-            var tokens = GetNormalTokens("((3+4) +a3) * 1", (e) => e).ToList();
-            var nodeStack = new Stack<TokenNode>();
-            foreach (var token in tokens)
-                if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
-                    procFunc(token);
-            var root = valueStack.Pop();
-            Console.WriteLine(root.ToString());
-            Console.WriteLine(root.Value((s) => 1));
         }
-
-        private delegate void TokenProcFunc(Token token);
-
         // Patterns for individual tokens
         const string lpPattern = @"\(";
         const string rpPattern = @"\)";
@@ -226,199 +83,6 @@ namespace SpreadsheetUtilities
         [GeneratedRegex(rpPattern, options: ro)] public static partial Regex isClosingParenRegex();
         [GeneratedRegex(anyOneLinePattern, options: ro)] public static partial Regex isAnythingRegex();
         [GeneratedRegex(isZerosPattern, options: ro)] public static partial Regex isZeros();
-
-        /// <summary>
-        /// Given an expression, enumerates the tokens that compose it.  Tokens are left paren;
-        /// right paren; one of the four operator symbols; a string consisting of a letter or underscore
-        /// followed by zero or more letters, digits, or underscores; a double literal; and anything that doesn't
-        /// match one of those patterns.  There are no empty tokens, and no token contains white space.
-        /// </summary>
-        private static IEnumerable<Token> GetNormalTokens(string formulaPrimative, Func<string, string> normalize)
-        {
-            string formula = normalize(formulaPrimative);
-            foreach (var s in findTokenRegex().Split(formula))
-                if (!isWhiteSpaceRegex().IsMatch(s))
-                    if (isDouble().IsMatch(s) && double.TryParse(s, out double d))
-                        yield return new Token(d.ToString());
-                    else
-                        yield return new Token(s.Trim());
-        }
-
-
-
-
-        private static void nothingFunc(Token token) { }
-        private static void everythingFunc(Token token)
-        {
-            throw new ArgumentException(string.Format("Could not identify token ({0})", token));
-        }
-
-        private static KeyValuePair<Regex, TokenProcFunc> errorTokenAction =
-                                                         new KeyValuePair<Regex, TokenProcFunc>(isAnythingRegex(), everythingFunc);
-
-        public delegate int Lookup(String variable_name);
-
-        /// <summary>
-        /// Generates a dictionary where the keys are regex that recognize the right thing to be parsed
-        /// and the values are delegates of what to do.
-        /// 
-        /// Built this way to be composable with other dictionaries such that other tokens may be recognised.
-        /// Should probably use ordered dictionary so theres no lookup cost but its minimal and not N/big O relevant
-        /// This could be made better if i do a global variable replace and then a direct dictionary lookup
-        /// </summary>
-        /// <param name="valueStack">
-        /// The value stack used by the delegates to push values.
-        /// </param>
-        /// <param name="operatorStack">
-        /// The operator stack used by the delegates
-        /// </param>
-        /// <param name="variableEvaluator">
-        /// The variable lookup used by the variable delegate
-        /// </param>
-        /// <returns>
-        /// A dictionary with keys and values for appropriate operations to perform per regex
-        /// </returns>
-        /// <exception cref="Exception">
-        /// This function will not throw errors, the returned delegates will throw errors
-        /// for improper formulas
-        /// </exception>
-        private static Dictionary<TokenType, TokenProcFunc> generateTokenProcessorDictionary(Stack<TokenNode> valueStack, Stack<Token> operatorStack, Lookup variableEvaluator)
-        {
-            /// <summary>
-            /// If * or / is at the top of the operator stack, pop the value stack,
-            /// pop the operator stack, and apply the popped operator to the popped
-            /// number and t. Push the result onto the value stack.
-            /// 
-            /// Otherwise, push t onto the value stack.
-            /// </summary>
-            void immFunc(Token token)
-            {
-                if (operatorStack.Count == 0)
-                {
-                    valueStack.Push(new TokenNode(token, null, null));
-                    return;
-                }
-                if (!operatorStack.Peek().IsMultiplicative)
-                {
-                    valueStack.Push(new TokenNode(token, null, null));
-                    return;
-                }
-                if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
-                if (operatorStack.Peek().isDiv)
-                    if (double.TryParse(token.primativeString, out double d))
-                        if (d == 0.0)
-                            throw new ArgumentException("divideByZero");
-                valueStack.Push(
-                    new TokenNode(
-                        operatorStack.Pop(),
-                        valueStack.Pop(),
-                        new TokenNode(token, null, null))
-                    );
-            }
-
-            /// <summary>
-            /// Proceed as above, using the looked-up value of t instead of t
-            /// </summary>
-            void varFunc(Token token)
-            {
-                immFunc(token);
-            }
-            /// <summary>
-            /// "If + or - is at the top of the operator stack,
-            /// pop the value stack twice and the operator stack once,
-            /// then apply the popped operator to the popped numbers,
-            /// then push the result onto the value stack.
-            /// 
-            /// Push t onto the operator stack"
-            /// </summary>
-            void addativeFunc(Token token)
-            {
-                if (operatorStack.Count == 0)
-                {
-                    operatorStack.Push(token);
-                    return;
-                }
-                if (!operatorStack.Peek().IsAddative)
-                {
-                    operatorStack.Push(token);
-                    return;
-                }
-                if (valueStack.Count < 2) throw new ArgumentException("adding just one");
-                valueStack.Push(
-                    new TokenNode(
-                        operatorStack.Pop(),
-                        valueStack.Pop(),
-                        valueStack.Pop()
-                        )
-                    );
-            }
-
-
-            /// <summary>
-            /// Push t onto the operator stack
-            /// 
-            /// also unnecessary func wrapper. try crying if you dont like it
-            /// </summary>
-            void multiplicativefunc(Token token) => operatorStack.Push(token);
-
-
-            /// <summary>
-            /// Push t onto the operator stack
-            /// 
-            /// duplicate of mult. cry about it
-            /// </summary>
-            void openParenFunc(Token token) => operatorStack.Push(token);
-
-            /// <summary>
-            /// Do all three of these steps in order:
-            /// (1) 
-            ///     If + or - is at the top of the operator stack,
-            ///     pop the value stack twice and the operator stack
-            ///     once. Apply the popped operator to the popped
-            ///     numbers. Push the result onto the value stack.
-            /// (2)
-            ///     The top of the operator stack should be a '('.Pop it.
-            /// (3)
-            ///     If* or / is at the top of the operator stack, pop the
-            ///     value stack twice and the operator stack once. Apply
-            ///     the popped operator to the popped numbers. Push the
-            ///     result onto the value stack.
-            /// </summary>
-            void closeParenFunc(Token token)
-            {
-                if (operatorStack.Count == 0) throw new ArgumentException("Unmatched closing parenthesis");
-                if (operatorStack.Count > 1)
-                    if (operatorStack.Peek().IsAddative)
-                        if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
-                        else valueStack.Push(
-                            new TokenNode(
-                                operatorStack.Pop(),
-                                valueStack.Pop(),
-                                valueStack.Pop()
-                                )
-                        );
-                if (operatorStack.Count == 0) throw new ArgumentException("Unmatched closing parenthesis");
-                if (!operatorStack.Pop().isLParens) throw new ArgumentException("Unmatched closing parenthesis");
-                if (operatorStack.Count == 0) return;
-                if (!operatorStack.Peek().IsMultiplicative) return;
-                if (valueStack.Count < 2) throw new ArgumentException();
-                if (valueStack.Peek().primary.isImm)
-                    if (double.TryParse(valueStack.Peek().primary.primativeString, out double d))
-                        if (d == 0.0) throw new ArgumentException();
-
-            }
-
-            // dictionary of regex matched with correct response.
-            return new Dictionary<TokenType, TokenProcFunc> {
-                {TokenType.val, immFunc },
-                {TokenType.var, varFunc },
-                {TokenType.additive, addativeFunc },
-                {TokenType.multiplicative, multiplicativefunc },
-                {TokenType.openParen, openParenFunc },
-                {TokenType.closedParen, closeParenFunc },
-            };
-
-        }
     }
 
     /// <summary>
@@ -449,10 +113,14 @@ namespace SpreadsheetUtilities
         /// The associated normalizer is the identity function, and the associated validator
         /// maps every string to true.  
         /// </summary>
-        public Formula(String formula) :
+        public Formula(string formula) :
             this(formula, s => s, s => true)
         {
         }
+
+        private List<string> normalTokens;
+        private List<Token> tokens;
+        private TokenNode ExecutableAst;
 
         /// <summary>
         /// Creates a Formula from a string that consists of an infix expression written as
@@ -476,8 +144,27 @@ namespace SpreadsheetUtilities
         /// new Formula("x+y3", N, V) should throw an exception, since V(N("x")) is false
         /// new Formula("2x+y3", N, V) should throw an exception, since "2x+y3" is syntactically incorrect.
         /// </summary>
-        public Formula(String formula, Func<string, string> normalize, Func<string, bool> isValid)
+        public Formula(string formula, Func<string, string> normalize, Func<string, bool> isValid)
         {
+            var valueStack = new Stack<TokenNode>();
+            var operatorStack = new Stack<Token>();
+            //dictionary of correct action items
+            var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, (e) => 1);
+            tokens = GetNormalTokens(formula, normalize, isValid).ToList();
+            normalTokens = tokens.Select((token) => token.primativeString).ToList();
+            foreach (var token in multiplyBy1(tokens))
+                if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
+                    procFunc(token);
+            ExecutableAst = valueStack.Pop().Optmizied();
+        }
+
+        private static IEnumerable<Token> multiplyBy1(IEnumerable<Token> tokenList)
+        {
+            yield return new Token("(");
+            foreach (var token in tokenList) yield return token;
+            yield return new Token(")");
+            yield return new Token("*");
+            yield return new Token("1");
         }
 
         /// <summary>
@@ -503,7 +190,13 @@ namespace SpreadsheetUtilities
         /// </summary>
         public object Evaluate(Func<string, double> lookup)
         {
-            return null;
+            try
+            {
+                return ExecutableAst.Value(lookup);
+            } catch (Exception)
+            {
+                return new FormulaError();
+            }
         }
 
         /// <summary>
@@ -517,9 +210,12 @@ namespace SpreadsheetUtilities
         /// new Formula("x+X*z", N, s => true).GetVariables() should enumerate "X" and "Z".
         /// new Formula("x+X*z").GetVariables() should enumerate "x", "X", and "z".
         /// </summary>
-        public IEnumerable<String> GetVariables()
+        public IEnumerable<string> GetVariables()
         {
-            return null;
+            return tokens
+                .FindAll((token) => token.isVar)
+                .Select((token) => token.primativeString )
+                .AsEnumerable();
         }
 
         /// <summary>
@@ -534,7 +230,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public override string ToString()
         {
-            return null;
+            return normalTokens.Aggregate("",(a,b) => a + b);
         }
 
         /// <summary>
@@ -593,6 +289,382 @@ namespace SpreadsheetUtilities
         {
             return 0;
         }
+
+        //types of tokens for the parse algorithm
+        internal enum TokenType
+        {
+            multiplicative = 0,
+            additive = 1,
+            var = 2,
+            val = 3,
+            openParen = 4,
+            closedParen = 5,
+            erroneous = 6,
+        }
+
+        /// <summary>
+        /// element to build AST out of
+        /// elements with primary ops are to be evaluated
+        /// elements with primary vals are either immediate value or var
+        /// </summary>
+        internal struct TokenNode
+        {
+            //non-optimizing constructor
+            public TokenNode(Token primary, TokenNode? left, TokenNode? right)
+            {
+                this.primary = primary;
+                _leftRef = new(left);
+                _rightRef = new(right);
+                constValue = primary.isImm ?
+                double.TryParse(primary.primativeString, out double d) ?
+                    d :
+                    double.NaN :
+                double.NaN;
+                if (LeftChild != null && RightChild != null)
+                {
+                    var realLeft = (TokenNode)LeftChild;
+                    var realRight = (TokenNode)RightChild;
+                    //NaN o K = NaN unless NaN * 0 in some cases does accidental optimizations to remove vars
+                    constValue = primary.primativeString switch
+                    {
+                        "*" => realLeft.constValue * realRight.constValue,
+                        "/" => realLeft.constValue / realRight.constValue,
+                        "+" => realLeft.constValue + realRight.constValue,
+                        "-" => realLeft.constValue - realRight.constValue,
+                        _ => double.NaN,
+                    };
+                }
+            }
+
+            //optimizes AST tree and returns best version this code can produce
+            public readonly TokenNode Optmizied(bool unsafeOptimizations = false)
+            {
+                if (primary.IsValue) return this;
+                if (HasConstValue) return new TokenNode(new Token(constValue.ToString()), null, null);
+                if (LeftChild != null && RightChild != null)
+                {
+                    var realLeft = ((TokenNode)LeftChild).Optmizied(unsafeOptimizations);
+                    var realRight = ((TokenNode)RightChild).Optmizied(unsafeOptimizations);
+                    //pre-evaluate k1 o k2 = k3
+                    if (realLeft.HasConstValue && realRight.HasConstValue)
+                    {
+                        return
+                            new TokenNode(
+                            new Token((primary.primativeString switch
+                            {
+                                "*" => realLeft.constValue * realRight.constValue,
+                                "/" => realLeft.constValue / realRight.constValue,
+                                "+" => realLeft.constValue + realRight.constValue,
+                                "-" => realLeft.constValue - realRight.constValue,
+                                _ => double.NaN,
+                            }).ToString()), null, null);
+                    }
+                    //clip branches with identity operations % * 1, % / 1, % + 0, % - 0
+                    if (primary.IsAddative)
+                    {
+                        if (realLeft.constValue.Equals(0)) return realRight;
+                        if (realRight.constValue.Equals(0)) return realLeft;
+                    }
+                    else if (primary.IsMultiplicative)
+                    {
+                        if (realLeft.constValue.Equals(1)) return realRight;
+                        if (realRight.constValue.Equals(1)) return realLeft;
+                    }
+                    if (unsafeOptimizations)
+                    {
+                        //recipricol const division % / k1, k2 = 1/k1, do % * k2
+                        if (primary.isDiv && realRight.HasConstValue) return new TokenNode(
+                                new Token("*"),
+                                realLeft,
+                                new TokenNode(new Token((1 / realRight.constValue).ToString()), null, null)
+                                );
+                        // TODO: tree balancing ((%1 * %2) * %3) * %4 = (%1 * %2) * (%3 * %4)
+                        // btw technically not valid for float types
+
+                        // TODO: %1 + %1 = 2 * %1
+                        // TODO: (k1 * %1) + %1, k2 = k1 + 1, do k2 * %
+                    }
+                }
+                return this;
+            }
+
+            //does a preorder traversal lisp-y string for debugging "k" indicates calculated constant vals
+            public readonly string ToString(Func<string, double>? lo = null, int depth = 0)
+            {
+                lo ??= (_) => 1;
+                return
+                    "\n" + new string(' ', depth * 4) +
+                    (LeftChild != null ? "(" : "") +
+                    primary.primativeString.ToString() +
+                    (HasConstValue ? " K" + (LeftChild != null ? " :" + constValue : "") : "") +
+                    LeftChild?.ToString(lo, depth + 1) +
+                    RightChild?.ToString(lo, depth + 1) +
+                    (LeftChild != null ? ("\n" + new string(' ', depth * 4) + ")") : "");
+            }
+
+            //who said there were no pointers in "safe" c#?
+            internal class ReferenceLMAO(TokenNode? tn) { public TokenNode? tn = tn; }
+            private readonly ReferenceLMAO _leftRef;
+            private readonly ReferenceLMAO _rightRef;
+            //ease of use get from TokenNode*
+            public readonly TokenNode? LeftChild { get => _leftRef.tn; }
+            public readonly TokenNode? RightChild { get => _rightRef.tn; }
+
+            //primary token for this node
+            public readonly Token primary;
+
+            //NaN indicates var dependance. sue me. cry about it. shout at the sky even
+            public readonly bool HasConstValue { get => !double.IsNaN(constValue); }
+
+            //for optimizing
+            public double constValue;
+
+            //should never really produce NaNs. I thing 10/(1/1E-25) or something might trigger this
+            //you would have to divide by infinite
+            public readonly double Value(Func<string, double> lookup)
+            {
+                if (HasConstValue) return constValue;
+                if (primary.isVar) return lookup(primary.primativeString);
+                if (LeftChild == null || RightChild == null) return double.NaN;
+                var leftValue = LeftChild?.Value(lookup) ?? double.NaN;
+                var rightValue = RightChild?.Value(lookup) ?? double.NaN;
+                return primary.primativeString switch
+                {
+                    "*" => leftValue * rightValue,
+                    "/" => leftValue / rightValue,
+                    "+" => leftValue + rightValue,
+                    "-" => leftValue - rightValue,
+                    _ => double.NaN,
+                };
+            }
+        }
+
+        //represents a token
+        //should probably be built with an enum
+        // TODO: build with enum
+        internal struct Token
+        {
+            public bool IsOperation { get => IsAddative || IsMultiplicative || IsParens; }
+            public readonly bool IsAddative { get => isAdd || isSub; }
+            public bool isAdd = false;
+            public bool isSub = false;
+            public readonly bool IsMultiplicative { get => isMult || isDiv; }
+            public bool isMult = false;
+            public bool isDiv = false;
+            public bool IsValue { get => isImm || isVar; }
+            public bool isImm = false;
+            public bool isVar = false;
+            public bool IsParens { get => isLParens || isRParens; }
+            public bool isLParens = false;
+            public bool isRParens = false;
+            public string primativeString;
+            public Token(string primative)
+            {
+                if (isImm = double.TryParse(primative, out double d)) primativeString = d.ToString();
+                else primativeString = primative;
+                isVar = Utility.isVariableRegex().IsMatch(primative);
+                isDiv = Utility.isDivRegex().IsMatch(primative);
+                isMult = Utility.isMultRegex().IsMatch(primative);
+                isAdd = Utility.isAddRegex().IsMatch(primative);
+                isSub = Utility.isSubRegex().IsMatch(primative);
+                isLParens = Utility.isOpeningParenRegex().IsMatch(primative);
+                isRParens = Utility.isClosingParenRegex().IsMatch(primative);
+            }
+            public readonly TokenType Type
+            {
+                get
+                {
+                    if (IsAddative) return TokenType.additive;
+                    if (IsMultiplicative) return TokenType.multiplicative;
+                    if (isVar) return TokenType.var;
+                    if (isLParens) return TokenType.openParen;
+                    if (isRParens) return TokenType.closedParen;
+                    if (isImm) return TokenType.val;
+                    return TokenType.erroneous;
+                }
+            }
+        }
+
+        private delegate void TokenProcFunc(Token token);
+
+        
+
+        /// <summary>
+        /// Given an expression, enumerates the tokens that compose it.  Tokens are left paren;
+        /// right paren; one of the four operator symbols; a string consisting of a letter or underscore
+        /// followed by zero or more letters, digits, or underscores; a double literal; and anything that doesn't
+        /// match one of those patterns.  There are no empty tokens, and no token contains white space.
+        /// </summary>
+        private static IEnumerable<Token> GetNormalTokens(string formulaPrimative, Func<string, string> normalize, Func<string, bool> isValid)
+        {
+            string formula = formulaPrimative;
+            foreach (var s in Utility.findTokenRegex().Split(formula))
+                if (!Utility.isWhiteSpaceRegex().IsMatch(s))
+                {
+                    Token token;
+                    if (double.TryParse(s, out double d)) token = new Token(d.ToString());
+                    else token = new Token(s.Trim());
+                    if (token.isVar) token = new Token(normalize(token.primativeString));
+                    if (!isValid(token.primativeString)) throw new FormulaFormatException("die exception");
+                    yield return token;
+                }
+        }
+
+        public delegate int Lookup(string variable_name);
+
+        /// <summary>
+        /// Generates a dictionary where the keys are regex that recognize the right thing to be parsed
+        /// and the values are delegates of what to do.
+        /// 
+        /// Built this way to be composable with other dictionaries such that other tokens may be recognised.
+        /// Should probably use ordered dictionary so theres no lookup cost but its minimal and not N/big O relevant
+        /// This could be made better if i do a global variable replace and then a direct dictionary lookup
+        /// </summary>
+        /// <param name="valueStack">
+        /// The value stack used by the delegates to push values.
+        /// </param>
+        /// <param name="operatorStack">
+        /// The operator stack used by the delegates
+        /// </param>
+        /// <param name="variableEvaluator">
+        /// The variable lookup used by the variable delegate
+        /// </param>
+        /// <returns>
+        /// A dictionary with keys and values for appropriate operations to perform per regex
+        /// </returns>
+        /// <exception cref="Exception">
+        /// This function will not throw errors, the returned delegates will throw errors
+        /// for improper formulas
+        /// </exception>
+        private static Dictionary<TokenType, TokenProcFunc> generateTokenProcessorDictionary(Stack<TokenNode> valueStack, Stack<Token> operatorStack, Lookup variableEvaluator)
+        {
+            /// <summary>
+            /// If * or / is at the top of the operator stack, pop the value stack,
+            /// pop the operator stack, and apply the popped operator to the popped
+            /// number and t. Push the result onto the value stack.
+            /// 
+            /// Otherwise, push t onto the value stack.
+            /// </summary>
+            void immFunc(Token token)
+            {
+                if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
+                {
+
+                    if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
+                    if (operatorStack.Peek().isDiv)
+                        if (double.TryParse(token.primativeString, out double d))
+                            if (d == 0.0)
+                                throw new ArgumentException("divideByZero");
+                    valueStack.Push(new TokenNode(
+                        operatorStack.Pop(),
+                        valueStack.Pop(),
+                        new TokenNode(token, null, null)
+                        ));
+
+                } 
+                else
+                {
+                    valueStack.Push(new TokenNode(token, null, null));
+                }
+            }
+
+            /// <summary>
+            /// Proceed as above, using the looked-up value of t instead of t
+            /// </summary>
+            void varFunc(Token token)
+            {
+                immFunc(token);
+            }
+            /// <summary>
+            /// "If + or - is at the top of the operator stack,
+            /// pop the value stack twice and the operator stack once,
+            /// then apply the popped operator to the popped numbers,
+            /// then push the result onto the value stack.
+            /// 
+            /// Push t onto the operator stack"
+            /// </summary>
+            void addativeFunc(Token token)
+            {
+                if (operatorStack.Peek().IsAddative)
+                {
+                    if (valueStack.Count < 2) throw new ArgumentException("adding just one");
+                    valueStack.Push(
+                        new TokenNode(
+                            operatorStack.Pop(),
+                            right: valueStack.Pop(),
+                            left: valueStack.Pop()
+                            )
+                        );
+                }
+                operatorStack.Push(token);
+            }
+
+
+            /// <summary>
+            /// Push t onto the operator stack
+            /// 
+            /// also unnecessary func wrapper. try crying if you dont like it
+            /// </summary>
+            void multiplicativefunc(Token token) => operatorStack.Push(token);
+
+
+            /// <summary>
+            /// Push t onto the operator stack
+            /// 
+            /// duplicate of mult. cry about it
+            /// </summary>
+            void openParenFunc(Token token) => operatorStack.Push(token);
+
+            /// <summary>
+            /// Do all three of these steps in order:
+            /// (1) 
+            ///     If + or - is at the top of the operator stack,
+            ///     pop the value stack twice and the operator stack
+            ///     once. Apply the popped operator to the popped
+            ///     numbers. Push the result onto the value stack.
+            /// (2)
+            ///     The top of the operator stack should be a '('.Pop it.
+            /// (3)
+            ///     If* or / is at the top of the operator stack, pop the
+            ///     value stack twice and the operator stack once. Apply
+            ///     the popped operator to the popped numbers. Push the
+            ///     result onto the value stack.
+            /// </summary>
+            void closeParenFunc(Token token)
+            {
+                if (operatorStack.Count == 0) throw new ArgumentException("Unmatched closing parenthesis");
+                if (operatorStack.Count > 1)
+                    if (operatorStack.Peek().IsAddative)
+                        if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
+                        else valueStack.Push(
+                            new TokenNode(
+                                primary: operatorStack.Pop(),
+                                right: valueStack.Pop(),
+                                left: valueStack.Pop()
+                                )
+                        );
+                if (operatorStack.Count == 0) throw new ArgumentException("Unmatched closing parenthesis");
+                if (!operatorStack.Pop().isLParens) throw new ArgumentException("Unmatched closing parenthesis");
+                if (operatorStack.Count == 0) return;
+                if (!operatorStack.Peek().IsMultiplicative) return;
+                if (valueStack.Count < 2) throw new ArgumentException();
+                if (valueStack.Peek().primary.isImm)
+                    if (double.TryParse(valueStack.Peek().primary.primativeString, out double d))
+                        if (d == 0.0) throw new ArgumentException();
+
+            }
+
+            // dictionary of regex matched with correct response.
+            return new Dictionary<TokenType, TokenProcFunc> {
+                {TokenType.val, immFunc },
+                {TokenType.var, varFunc },
+                {TokenType.additive, addativeFunc },
+                {TokenType.multiplicative, multiplicativefunc },
+                {TokenType.openParen, openParenFunc },
+                {TokenType.closedParen, closeParenFunc },
+            };
+
+        }
     }
 
     /// <summary>
@@ -603,7 +675,7 @@ namespace SpreadsheetUtilities
         /// <summary>
         /// Constructs a FormulaFormatException containing the explanatory message.
         /// </summary>
-        public FormulaFormatException(String message)
+        public FormulaFormatException(string message)
             : base(message)
         {
         }
@@ -618,7 +690,7 @@ namespace SpreadsheetUtilities
         /// Constructs a FormulaError containing the explanatory reason.
         /// </summary>
         /// <param name="reason"></param>
-        public FormulaError(String reason)
+        public FormulaError(string reason)
             : this()
         {
             Reason = reason;
