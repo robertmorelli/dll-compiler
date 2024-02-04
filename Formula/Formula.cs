@@ -22,15 +22,6 @@ namespace SpreadsheetUtilities
 
     public static partial class Utility
     {
-        public static void test()
-        {
-            // Example usage
-            var f = new Formula("(4+5+6)-2/2/0");
-            Console.WriteLine("---");
-            Console.WriteLine(f.Evaluate((_) => 1));
-            Console.WriteLine("---");
-
-        }
         // Patterns for individual tokens
         const string lpPattern = @"\(";
         const string rpPattern = @"\)";
@@ -67,6 +58,7 @@ namespace SpreadsheetUtilities
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking;
 
+        // tese
         [GeneratedRegex(doubleAlonePattern, options: ro)] public static partial Regex isDouble();
         [GeneratedRegex(opPattern, options: ro)] public static partial Regex isOperation();
         [GeneratedRegex(tokenPattern, options: ro)] public static partial Regex findTokenRegex();
@@ -118,9 +110,11 @@ namespace SpreadsheetUtilities
         {
         }
 
-        private List<string> normalTokens;
         private List<Token> tokens;
         private TokenNode ExecutableAst;
+        private bool throwDivByZero = false;
+        private bool throwOtherError = false;
+        private const string dbz = "divide by zero";
 
         /// <summary>
         /// Creates a Formula from a string that consists of an infix expression written as
@@ -148,17 +142,25 @@ namespace SpreadsheetUtilities
         {
             var valueStack = new Stack<TokenNode>();
             var operatorStack = new Stack<Token>();
-            //dictionary of correct action items
-            var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, (e) => 1);
+            var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, isValid);
             tokens = GetNormalTokens(formula, normalize, isValid).ToList();
-            normalTokens = tokens.Select((token) => token.primativeString).ToList();
-            foreach (var token in multiplyBy1(tokens))
-                if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
-                    procFunc(token);
-            ExecutableAst = valueStack.Pop().Optmizied();
+            try
+            {
+                foreach (var token in MultiplyBy1(tokens))
+                    if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
+                        procFunc(token);
+                ExecutableAst = valueStack.Pop().Optmizied();
+                if(valueStack.Count() > 0) throwOtherError = true;
+                if(operatorStack.Count() > 0) throwOtherError = true;
+            }
+            catch (Exception e)
+            {
+                throwDivByZero = e.Message.Equals(dbz);
+                if(!throwDivByZero) throw new FormulaFormatException("somethings wrong");
+            }
         }
 
-        private static IEnumerable<Token> multiplyBy1(IEnumerable<Token> tokenList)
+        private static IEnumerable<Token> MultiplyBy1(IEnumerable<Token> tokenList)
         {
             yield return new Token("(");
             foreach (var token in tokenList) yield return token;
@@ -190,12 +192,15 @@ namespace SpreadsheetUtilities
         /// </summary>
         public object Evaluate(Func<string, double> lookup)
         {
+            if (throwDivByZero) return new FormulaError(dbz);
+            if (throwOtherError) return new FormulaError("done messed up");
             try
             {
                 return ExecutableAst.Value(lookup);
-            } catch (Exception)
+            }
+            catch (Exception e)
             {
-                return new FormulaError();
+                return new FormulaError(e.Message);
             }
         }
 
@@ -210,13 +215,11 @@ namespace SpreadsheetUtilities
         /// new Formula("x+X*z", N, s => true).GetVariables() should enumerate "X" and "Z".
         /// new Formula("x+X*z").GetVariables() should enumerate "x", "X", and "z".
         /// </summary>
-        public IEnumerable<string> GetVariables()
-        {
-            return tokens
+        public IEnumerable<string> GetVariables() =>
+            tokens
                 .FindAll((token) => token.isVar)
-                .Select((token) => token.primativeString )
+                .Select((token) => token.primativeString)
                 .AsEnumerable();
-        }
 
         /// <summary>
         /// Returns a string containing no spaces which, if passed to the Formula
@@ -228,10 +231,10 @@ namespace SpreadsheetUtilities
         /// new Formula("x + y", N, s => true).ToString() should return "X+Y"
         /// new Formula("x + Y").ToString() should return "x+Y"
         /// </summary>
-        public override string ToString()
-        {
-            return normalTokens.Aggregate("",(a,b) => a + b);
-        }
+        public override string ToString() =>
+            tokens
+                .Select((token) => token.primativeString)
+                .Aggregate("", (a, b) => a + b);
 
         /// <summary>
         ///  <change> make object nullable </change>
@@ -255,9 +258,10 @@ namespace SpreadsheetUtilities
         /// new Formula("x1+y2").Equals(new Formula("y2+x1")) is false
         /// new Formula("2.0 + x7").Equals(new Formula("2.000 + x7")) is true
         /// </summary>
-        public override bool Equals(object? obj)
-        {
-            return false;
+        public override bool Equals(object? obj){
+            if(obj == null) return false;
+            if(obj.GetType == GetType) return false;
+            return GetHashCode() == obj.GetHashCode();
         }
 
         /// <summary>
@@ -265,30 +269,30 @@ namespace SpreadsheetUtilities
         /// Reports whether f1 == f2, using the notion of equality from the Equals method.
         /// 
         /// </summary>
-        public static bool operator ==(Formula f1, Formula f2)
-        {
-            return false;
-        }
+        public static bool operator ==(Formula f1, Formula f2) => f1.Equals(f2);
 
         /// <summary>
         ///   <change> We are now using Non-Nullable objects.  Thus neither f1 nor f2 can be null!</change>
         ///   <change> Note: != should almost always be not ==, if you get my meaning </change>
         ///   Reports whether f1 != f2, using the notion of equality from the Equals method.
         /// </summary>
-        public static bool operator !=(Formula f1, Formula f2)
-        {
-            return false;
-        }
+        public static bool operator !=(Formula f1, Formula f2) => !(f1 == f2);
 
         /// <summary>
         /// Returns a hash code for this Formula.  If f1.Equals(f2), then it must be the
         /// case that f1.GetHashCode() == f2.GetHashCode().  Ideally, the probability that two 
         /// randomly-generated unequal Formulae have the same hash code should be extremely small.
         /// </summary>
-        public override int GetHashCode()
-        {
-            return 0;
+        public override int GetHashCode() {
+            if(!hasHashCode) {
+                hashCodeCash = ToString().GetHashCode();
+                hasHashCode = true;
+            }
+            return hashCodeCash;
         }
+
+        private int hashCodeCash = 0;
+        private bool hasHashCode = false;
 
         //types of tokens for the parse algorithm
         internal enum TokenType
@@ -337,7 +341,7 @@ namespace SpreadsheetUtilities
             }
 
             //optimizes AST tree and returns best version this code can produce
-            public readonly TokenNode Optmizied(bool unsafeOptimizations = false)
+            public readonly TokenNode Optmizied(bool unsafeOptimizations = true)
             {
                 if (primary.IsValue) return this;
                 if (HasConstValue) return new TokenNode(new Token(constValue.ToString()), null, null);
@@ -345,29 +349,30 @@ namespace SpreadsheetUtilities
                 {
                     var realLeft = ((TokenNode)LeftChild).Optmizied(unsafeOptimizations);
                     var realRight = ((TokenNode)RightChild).Optmizied(unsafeOptimizations);
-                    //pre-evaluate k1 o k2 = k3
-                    if (realLeft.HasConstValue && realRight.HasConstValue)
+                    if (primary.isAdd)
                     {
-                        return
-                            new TokenNode(
-                            new Token((primary.primativeString switch
-                            {
-                                "*" => realLeft.constValue * realRight.constValue,
-                                "/" => realLeft.constValue / realRight.constValue,
-                                "+" => realLeft.constValue + realRight.constValue,
-                                "-" => realLeft.constValue - realRight.constValue,
-                                _ => double.NaN,
-                            }).ToString()), null, null);
-                    }
-                    //clip branches with identity operations % * 1, % / 1, % + 0, % - 0
-                    if (primary.IsAddative)
-                    {
+                        // 0 + % = %
                         if (realLeft.constValue.Equals(0)) return realRight;
+                        // % + 0 = %
                         if (realRight.constValue.Equals(0)) return realLeft;
                     }
-                    else if (primary.IsMultiplicative)
+                    if (primary.isMult)
                     {
+                        // 1 * % = %
                         if (realLeft.constValue.Equals(1)) return realRight;
+                        // % * 1 = % 
+                        if (realRight.constValue.Equals(1)) return realLeft;
+                    }
+                    if (primary.isSub)
+                    {
+                        // % - 0 = %
+                        if (realRight.constValue.Equals(0)) return realLeft;
+                    }
+                    if (primary.isDiv)
+                    {
+                        // 0 / % = 0
+                        if (realLeft.constValue.Equals(0)) return realLeft;
+                        // % / 1 = %
                         if (realRight.constValue.Equals(1)) return realLeft;
                     }
                     if (unsafeOptimizations)
@@ -389,7 +394,7 @@ namespace SpreadsheetUtilities
             }
 
             //does a preorder traversal lisp-y string for debugging "k" indicates calculated constant vals
-            public readonly string ToString(Func<string, double>? lo = null, int depth = 0)
+            /*public readonly string ToString(Func<string, double>? lo = null, int depth = 0)
             {
                 lo ??= (_) => 1;
                 return
@@ -400,7 +405,7 @@ namespace SpreadsheetUtilities
                     LeftChild?.ToString(lo, depth + 1) +
                     RightChild?.ToString(lo, depth + 1) +
                     (LeftChild != null ? ("\n" + new string(' ', depth * 4) + ")") : "");
-            }
+            }*/
 
             //who said there were no pointers in "safe" c#?
             internal class ReferenceLMAO(TokenNode? tn) { public TokenNode? tn = tn; }
@@ -428,6 +433,7 @@ namespace SpreadsheetUtilities
                 if (LeftChild == null || RightChild == null) return double.NaN;
                 var leftValue = LeftChild?.Value(lookup) ?? double.NaN;
                 var rightValue = RightChild?.Value(lookup) ?? double.NaN;
+                if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException(dbz);
                 return primary.primativeString switch
                 {
                     "*" => leftValue * rightValue,
@@ -439,11 +445,18 @@ namespace SpreadsheetUtilities
             }
         }
 
-        //represents a token
-        //should probably be built with an enum
-        // TODO: build with enum
+        /// <summary>
+        /// represents a token
+        /// should probably be built with an enum
+        /// TODO: build with enum
+        /// </summary>
         internal struct Token
         {
+            /// <summary>
+            /// these vars exist because im too lazy to make
+            /// an enum for this. anyway this is pretty self explanitory
+            /// this is all token types with some inheritance
+            /// </summary>
             public bool IsOperation { get => IsAddative || IsMultiplicative || IsParens; }
             public readonly bool IsAddative { get => isAdd || isSub; }
             public bool isAdd = false;
@@ -487,7 +500,7 @@ namespace SpreadsheetUtilities
 
         private delegate void TokenProcFunc(Token token);
 
-        
+
 
         /// <summary>
         /// Given an expression, enumerates the tokens that compose it.  Tokens are left paren;
@@ -536,7 +549,7 @@ namespace SpreadsheetUtilities
         /// This function will not throw errors, the returned delegates will throw errors
         /// for improper formulas
         /// </exception>
-        private static Dictionary<TokenType, TokenProcFunc> generateTokenProcessorDictionary(Stack<TokenNode> valueStack, Stack<Token> operatorStack, Lookup variableEvaluator)
+        private static Dictionary<TokenType, TokenProcFunc> generateTokenProcessorDictionary(Stack<TokenNode> valueStack, Stack<Token> operatorStack, Func<string, bool> isValid)
         {
             /// <summary>
             /// If * or / is at the top of the operator stack, pop the value stack,
@@ -553,15 +566,15 @@ namespace SpreadsheetUtilities
                     if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
                     if (operatorStack.Peek().isDiv)
                         if (double.TryParse(token.primativeString, out double d))
-                            if (d == 0.0)
-                                throw new ArgumentException("divideByZero");
+                            if (d.Equals(0))
+                                throw new ArgumentException(dbz);
                     valueStack.Push(new TokenNode(
                         operatorStack.Pop(),
-                        valueStack.Pop(),
-                        new TokenNode(token, null, null)
+                        left: valueStack.Pop(),
+                        right: new TokenNode(token, null, null)
                         ));
 
-                } 
+                }
                 else
                 {
                     valueStack.Push(new TokenNode(token, null, null));
@@ -573,8 +586,10 @@ namespace SpreadsheetUtilities
             /// </summary>
             void varFunc(Token token)
             {
+                if (!isValid(token.primativeString)) throw new ArgumentException("var bad");
                 immFunc(token);
             }
+
             /// <summary>
             /// "If + or - is at the top of the operator stack,
             /// pop the value stack twice and the operator stack once,
@@ -613,7 +628,10 @@ namespace SpreadsheetUtilities
             /// 
             /// duplicate of mult. cry about it
             /// </summary>
-            void openParenFunc(Token token) => operatorStack.Push(token);
+            void openParenFunc(Token token)
+            {
+                operatorStack.Push(token);
+            }
 
             /// <summary>
             /// Do all three of these steps in order:
@@ -632,30 +650,35 @@ namespace SpreadsheetUtilities
             /// </summary>
             void closeParenFunc(Token token)
             {
-                if (operatorStack.Count == 0) throw new ArgumentException("Unmatched closing parenthesis");
-                if (operatorStack.Count > 1)
-                    if (operatorStack.Peek().IsAddative)
-                        if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
-                        else valueStack.Push(
-                            new TokenNode(
-                                primary: operatorStack.Pop(),
-                                right: valueStack.Pop(),
-                                left: valueStack.Pop()
-                                )
-                        );
-                if (operatorStack.Count == 0) throw new ArgumentException("Unmatched closing parenthesis");
-                if (!operatorStack.Pop().isLParens) throw new ArgumentException("Unmatched closing parenthesis");
-                if (operatorStack.Count == 0) return;
-                if (!operatorStack.Peek().IsMultiplicative) return;
-                if (valueStack.Count < 2) throw new ArgumentException();
-                if (valueStack.Peek().primary.isImm)
-                    if (double.TryParse(valueStack.Peek().primary.primativeString, out double d))
-                        if (d == 0.0) throw new ArgumentException();
-
+                if (operatorStack.Count != 0 && operatorStack.Peek().IsAddative)
+                {
+                    if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
+                    else valueStack.Push(
+                        new TokenNode(
+                            primary: operatorStack.Pop(),
+                            right: valueStack.Pop(),
+                            left: valueStack.Pop()
+                            )
+                    );
+                }
+                if (operatorStack.Count == 0 || !operatorStack.Pop().isLParens)
+                    throw new ArgumentException("Unmatched closing parenthesis");
+                if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
+                {
+                    if (valueStack.Count < 2) throw new ArgumentException("idk something went wrong");
+                    if (valueStack.Peek().primary.isImm)
+                        if (double.TryParse(valueStack.Peek().primary.primativeString, out double d))
+                            if (d.Equals(0))
+                                throw new ArgumentException(dbz);
+                    valueStack.Push(new TokenNode(
+                        operatorStack.Pop(),
+                        right: valueStack.Pop(),
+                        left: valueStack.Pop()
+                        ));
+                }
             }
 
-            // dictionary of regex matched with correct response.
-            return new Dictionary<TokenType, TokenProcFunc> {
+            var dictionary = new Dictionary<TokenType, TokenProcFunc> {
                 {TokenType.val, immFunc },
                 {TokenType.var, varFunc },
                 {TokenType.additive, addativeFunc },
@@ -663,6 +686,9 @@ namespace SpreadsheetUtilities
                 {TokenType.openParen, openParenFunc },
                 {TokenType.closedParen, closeParenFunc },
             };
+
+            // dictionary of regex matched with correct response.
+            return dictionary;
 
         }
     }
@@ -702,16 +728,3 @@ namespace SpreadsheetUtilities
         public string Reason { get; private set; }
     }
 }
-
-
-// <change>
-//   If you are using Extension methods to deal with common stack operations (e.g., checking for
-//   an empty stack before peeking) you will find that the Non-Nullable checking is "biting" you.
-//
-//   To fix this, you have to use a little special syntax like the following:
-//
-//       public static bool OnTop<T>(this Stack<T> stack, T element1, T element2) where T : notnull
-//
-//   Notice that the "where T : notnull" tells the compiler that the Stack can contain any object
-//   as long as it doesn't allow nulls!
-// </change>

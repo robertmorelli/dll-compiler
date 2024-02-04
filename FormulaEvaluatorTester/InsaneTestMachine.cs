@@ -15,10 +15,6 @@
 ///     to generate random formulas and then evaluates them using the
 ///     the evaluator.
 /// </summary>
-
-
-
-
 using FormulaEvaluator;
 using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
@@ -37,14 +33,8 @@ namespace FormulaEvaluatorTester
         /// <param name="_">ignore</param>
         static void Main(string[] _)
         {
-
-
-
-
-            Utility.test();
-            return;
             Dictionary<string, int> lookupDict = new Dictionary<string, int>();
-            Evaluator.Lookup lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
+            Lookup lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
             Random random = new Random();
             string testCase;
             int result;
@@ -55,11 +45,11 @@ namespace FormulaEvaluatorTester
                 testCase = createTestCase(lookupDict, false);
                 try
                 {
-                    result = Evaluator.Evaluate(testCase, lu);
-                    System.Console.WriteLine(string.Format("{0} = {1}",testCase,result));
+                    result = Evaluate(testCase, lu);
+                    Console.WriteLine(string.Format("{0} = {1}",testCase,result));
                 } catch (Exception e)
                 {
-                    if(e.Message != "Division by zero") System.Console.WriteLine(string.Format("(should be valid case) test failed for {0}", testCase));
+                    if(e.Message != "Division by zero") Console.WriteLine(string.Format("(should be valid case) test failed for {0}", testCase));
                 }
 
 
@@ -72,7 +62,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("(should be invalid case) test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
@@ -85,7 +75,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
@@ -98,7 +88,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
@@ -111,7 +101,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
@@ -125,7 +115,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
@@ -138,7 +128,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
@@ -152,7 +142,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
@@ -165,7 +155,7 @@ namespace FormulaEvaluatorTester
                     result = Evaluator.Evaluate(testCase, lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //test successful
                 }
