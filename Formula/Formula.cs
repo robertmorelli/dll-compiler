@@ -150,13 +150,13 @@ namespace SpreadsheetUtilities
                     if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
                         procFunc(token);
                 ExecutableAst = valueStack.Pop().Optmizied();
-                if(valueStack.Count() > 0) throwOtherError = true;
-                if(operatorStack.Count() > 0) throwOtherError = true;
+                if (valueStack.Count() > 0) throwOtherError = true;
+                if (operatorStack.Count() > 0) throwOtherError = true;
             }
             catch (Exception e)
             {
                 throwDivByZero = e.Message.Equals(dbz);
-                if(!throwDivByZero) throw new FormulaFormatException("somethings wrong");
+                if (!throwDivByZero) throw new FormulaFormatException("somethings wrong");
             }
         }
 
@@ -258,11 +258,11 @@ namespace SpreadsheetUtilities
         /// new Formula("x1+y2").Equals(new Formula("y2+x1")) is false
         /// new Formula("2.0 + x7").Equals(new Formula("2.000 + x7")) is true
         /// </summary>
-        public override bool Equals(object? obj){
-            if(obj == null) return false;
-            if(obj.GetType == GetType) return false;
-            return GetHashCode() == obj.GetHashCode();
-        }
+        public override bool Equals(object? obj) =>
+            (obj != null) &&
+            (obj.GetType() == typeof(Formula)) &&
+            (GetHashCode() == obj.GetHashCode());
+        
 
         /// <summary>
         ///   <change> We are now using Non-Nullable objects.  Thus neither f1 nor f2 can be null!</change>
@@ -283,8 +283,10 @@ namespace SpreadsheetUtilities
         /// case that f1.GetHashCode() == f2.GetHashCode().  Ideally, the probability that two 
         /// randomly-generated unequal Formulae have the same hash code should be extremely small.
         /// </summary>
-        public override int GetHashCode() {
-            if(!hasHashCode) {
+        public override int GetHashCode()
+        {
+            if (!hasHashCode)
+            {
                 hashCodeCash = ToString().GetHashCode();
                 hasHashCode = true;
             }
@@ -334,8 +336,7 @@ namespace SpreadsheetUtilities
                         "*" => realLeft.constValue * realRight.constValue,
                         "/" => realLeft.constValue / realRight.constValue,
                         "+" => realLeft.constValue + realRight.constValue,
-                        "-" => realLeft.constValue - realRight.constValue,
-                        _ => double.NaN,
+                        _ => realLeft.constValue - realRight.constValue
                     };
                 }
             }
@@ -434,14 +435,13 @@ namespace SpreadsheetUtilities
                 var leftValue = LeftChild?.Value(lookup) ?? double.NaN;
                 var rightValue = RightChild?.Value(lookup) ?? double.NaN;
                 if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException(dbz);
-                return primary.primativeString switch
+                return (double)(primary.primativeString switch
                 {
                     "*" => leftValue * rightValue,
                     "/" => leftValue / rightValue,
                     "+" => leftValue + rightValue,
-                    "-" => leftValue - rightValue,
-                    _ => double.NaN,
-                };
+                    _ => leftValue - rightValue
+                });
             }
         }
 
@@ -518,8 +518,8 @@ namespace SpreadsheetUtilities
                     if (double.TryParse(s, out double d)) token = new Token(d.ToString());
                     else token = new Token(s.Trim());
                     if (token.isVar) token = new Token(normalize(token.primativeString));
-                    if (!isValid(token.primativeString)) throw new FormulaFormatException("die exception");
-                    yield return token;
+                    if (isValid(token.primativeString)) yield return token;
+                    else throw new FormulaFormatException("die exception");
                 }
         }
 
@@ -562,7 +562,6 @@ namespace SpreadsheetUtilities
             {
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
                 {
-
                     if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
                     if (operatorStack.Peek().isDiv)
                         if (double.TryParse(token.primativeString, out double d))
@@ -586,8 +585,8 @@ namespace SpreadsheetUtilities
             /// </summary>
             void varFunc(Token token)
             {
-                if (!isValid(token.primativeString)) throw new ArgumentException("var bad");
-                immFunc(token);
+                if (isValid(token.primativeString)) immFunc(token); 
+                else throw new ArgumentException("var bad");
             }
 
             /// <summary>
@@ -650,26 +649,27 @@ namespace SpreadsheetUtilities
             /// </summary>
             void closeParenFunc(Token token)
             {
-                if (operatorStack.Count != 0 && operatorStack.Peek().IsAddative)
+                if (operatorStack.Count != 0)
                 {
-                    if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
-                    else valueStack.Push(
-                        new TokenNode(
-                            primary: operatorStack.Pop(),
-                            right: valueStack.Pop(),
-                            left: valueStack.Pop()
-                            )
-                    );
+                    if (operatorStack.Peek().IsAddative)
+                    {
+                        if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
+                        else valueStack.Push(
+                            new TokenNode(
+                                primary: operatorStack.Pop(),
+                                right: valueStack.Pop(),
+                                left: valueStack.Pop()
+                                )
+                        );
+                    }
                 }
-                if (operatorStack.Count == 0 || !operatorStack.Pop().isLParens)
-                    throw new ArgumentException("Unmatched closing parenthesis");
+                if (operatorStack.Count == 0 || !operatorStack.Pop().isLParens) throw new ArgumentException("Unmatched closing parenthesis");
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
                 {
                     if (valueStack.Count < 2) throw new ArgumentException("idk something went wrong");
                     if (valueStack.Peek().primary.isImm)
                         if (double.TryParse(valueStack.Peek().primary.primativeString, out double d))
-                            if (d.Equals(0))
-                                throw new ArgumentException(dbz);
+                            if (d.Equals(0)) throw new ArgumentException(dbz);
                     valueStack.Push(new TokenNode(
                         operatorStack.Pop(),
                         right: valueStack.Pop(),
