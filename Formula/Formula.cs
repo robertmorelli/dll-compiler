@@ -482,10 +482,7 @@ namespace SpreadsheetUtilities
                     .Value(lookup);
                 var rightValue = ((TokenNode)RightChild)
                     .Value(lookup);
-                if (rightValue.Equals(0) && primary.isDiv)
-                {
-                    throw new ArgumentException(dbz);
-                }
+                if (rightValue.Equals(0) && primary.isDiv)throw new ArgumentException(dbz);
                 return (double)(primary.primativeString switch
                 {
                     "*" =>
@@ -622,10 +619,7 @@ namespace SpreadsheetUtilities
                     {
                         token = new Token(normalize(token.primativeString));
                     }
-                    if (token.IsErroneos())
-                    {
-                        throw new FormulaFormatException("die exception");
-                    }
+                    if (token.IsErroneos()) throw new FormulaFormatException("die exception");
                     if (isValid(token.primativeString))
                     {
                         yield return token;
@@ -796,12 +790,12 @@ namespace SpreadsheetUtilities
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
                 {
                     if (valueStack.Count < 2) throw new ArgumentException("idk something went wrong");
-                    if (valueStack.Peek().primary.isImm)
-                        if (double.TryParse(valueStack.Peek().primary.primativeString, out double d))
-                            if (d.Equals(0))
+                    var rightValue = valueStack.Pop();
+                    if (rightValue.primary.isImm)
+                        if (rightValue.HasConstValue)
+                            if (rightValue.constValue.Equals(0))
                                 throw new ArgumentException(dbz);
                     var operatorFromStack = operatorStack.Pop();
-                    var rightValue = valueStack.Pop();
                     var leftValue = valueStack.Pop();
                     var newValue = new TokenNode(
                         operatorFromStack,
