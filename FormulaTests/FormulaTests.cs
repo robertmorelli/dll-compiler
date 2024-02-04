@@ -370,10 +370,24 @@ namespace FormulaTests
         }
 
         [ExpectedException(typeof(FormulaError))]
-        public void ErrorToken()
+        public void ErrorTokens()
         {
             object a = new Formula("05.09.2001");
             Assert.AreEqual(true, a.Equals(5));
+        }
+
+        [ExpectedException(typeof(FormulaError))]
+        public void ErrorToken()
+        {
+            object a = new Formula("$");
+            Assert.AreEqual(true, a.Equals("$"));
+        }
+
+        [ExpectedException(typeof(FormulaError))]
+        public void ErrorTokenMult()
+        {
+            object a = new Formula("*5");
+            Assert.AreEqual(true, a.Equals("5"));
         }
 
         //fuzzing
