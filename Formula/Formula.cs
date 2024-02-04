@@ -457,7 +457,7 @@ namespace SpreadsheetUtilities
             /// an enum for this. anyway this is pretty self explanitory
             /// this is all token types with some inheritance
             /// </summary>
-            public bool IsOperation { get => IsAddative || IsMultiplicative || IsParens; }
+            //public bool IsOperation { get => IsAddative || IsMultiplicative || IsParens; }
             public readonly bool IsAddative { get => isAdd || isSub; }
             public bool isAdd = false;
             public bool isSub = false;
@@ -467,7 +467,7 @@ namespace SpreadsheetUtilities
             public bool IsValue { get => isImm || isVar; }
             public bool isImm = false;
             public bool isVar = false;
-            public bool IsParens { get => isLParens || isRParens; }
+            //public bool IsParens { get => isLParens || isRParens; }
             public bool isLParens = false;
             public bool isRParens = false;
             public string primativeString;

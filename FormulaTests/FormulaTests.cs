@@ -14,7 +14,7 @@ namespace FormulaTests
     [TestClass]
     public class FormulaTests
     {
-        
+
         private delegate string GetAChild();
         /// <summary>
         /// Generate a viable test case using a cfg
@@ -28,7 +28,8 @@ namespace FormulaTests
         /// bool to add nonexistent var to fromula
         /// </param>
         /// <returns></returns>
-        static string createTestCase(Dictionary<string, int> lookupDict, bool errorVar) {
+        static string createTestCase(Dictionary<string, int> lookupDict, bool errorVar)
+        {
             Random random = new Random();
             int expansions = 1000;
             var CFG = new Dictionary<string, List<GetAChild>> {
@@ -99,13 +100,16 @@ namespace FormulaTests
 
             string exp = "&S";
             var tokenIdentifier = new Regex("(&[WSTOE])");
-            while (exp.Contains("&")) {
+            while (exp.Contains("&"))
+            {
                 var tokens = Regex.Split(exp, tokenIdentifier.ToString());
                 exp = "";
-                foreach (var token in tokens) {
+                foreach (var token in tokens)
+                {
                     if (tokenIdentifier.IsMatch(token))
                     {
-                        if (token == "&T" && errorVar) {
+                        if (token == "&T" && errorVar)
+                        {
                             exp += " a0 ";
                             errorVar = false;
                         }
@@ -120,7 +124,8 @@ namespace FormulaTests
                             exp += possibilities[random.Next(0, possibilities.Count())].Invoke();
                         }
                     }
-                    else {
+                    else
+                    {
                         exp += token;
                     }
                 }
@@ -152,135 +157,165 @@ namespace FormulaTests
 
         //DIVIDE BY ZERO
         [ExpectedException(typeof(FormulaFormatException))]
-        public void DivByZeroConst() {
+        public void DivByZeroConst()
+        {
             var a = new Formula("a1/0");
             a.Evaluate((_) => 1);
         }
 
         [ExpectedException(typeof(FormulaFormatException))]
-        public void DivByZeroConstParens() {
+        public void DivByZeroConstParens()
+        {
             var a = new Formula("a1/(0)");
             a.Evaluate((_) => 1);
         }
 
         [ExpectedException(typeof(FormulaFormatException))]
-        public void DivByZeroVar() {
+        public void DivByZeroVar()
+        {
             var a = new Formula("5/(1-a1)");
             a.Evaluate((_) => 1);
         }
 
         //OPTIMIZATIONS
         [TestMethod]
-        public void PreEvaluation1() {
+        public void PreEvaluation1()
+        {
             var a = new Formula("(5+5)*a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void PreEvaluation2() {
+        public void PreEvaluation2()
+        {
             var a = new Formula("(5+5)+a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void PreEvaluation3() {
+        public void PreEvaluation3()
+        {
             var a = new Formula("(5+5)/a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void PreEvaluation4() {
+        public void PreEvaluation4()
+        {
             var a = new Formula("(5+5)-a1");
             a.Evaluate((_) => 1);
         }
 
 
         [TestMethod]
-        public void DoNothingOperations1() {
+        public void DoNothingOperations1()
+        {
             var a = new Formula("1*a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void DoNothingOperations2() {
+        public void DoNothingOperations2()
+        {
             var a = new Formula("a1*1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void DoNothingOperations3() {
+        public void DoNothingOperations3()
+        {
             var a = new Formula("0+a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void DoNothingOperations4() {
+        public void DoNothingOperations4()
+        {
             var a = new Formula("a1+0");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void DoNothingOperations5() {
+        public void DoNothingOperations5()
+        {
             var a = new Formula("a1-0");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void DoNothingOperations6() {
+        public void DoNothingOperations6()
+        {
             var a = new Formula("0/a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
-        public void DoNothingOperations7() {
+        public void DoNothingOperations7()
+        {
             var a = new Formula("a1/1");
             a.Evaluate((_) => 1);
         }
 
         //unsafe
         [TestMethod]
-        public void UnsafeRecipricolDivision() {
+        public void UnsafeRecipricolDivision()
+        {
             var a = new Formula("a1/2");
             a.Evaluate((_) => 1);
         }
 
         //test equality
         [TestMethod]
-        public void SpaceDotEquality() {
+        public void SpaceDotEquality()
+        {
             var a = new Formula("a1/2");
             var b = new Formula("a1 / 2");
-            Assert.AreEqual(true,a.Equals(b));
+            Assert.AreEqual(true, a.Equals(b));
         }
         [TestMethod]
-        public void SpaceEqualsEquality() {
+        public void SpaceEqualsEquality()
+        {
             var a = new Formula("a1/2");
             var b = new Formula("a1 / 2");
-            Assert.AreEqual(true,a == b);
+            Assert.AreEqual(true, a == b);
         }
         [TestMethod]
-        public void SpaceNotEqualsEquality() {
+        public void SpaceNotEqualsEquality()
+        {
             var a = new Formula("a1/2");
             var b = new Formula("a1 / 2");
-            Assert.AreEqual(false,a != b);
+            Assert.AreEqual(false, a != b);
         }
 
         //get variables
         [TestMethod]
-        public void GetVariables() {
+        public void GetVariables()
+        {
             var a = new Formula("a1/2");
-            Assert.AreEqual("a1",a.GetVariables().First());
+            Assert.AreEqual("a1", a.GetVariables().First());
         }
 
         //closing parens as imm
         [TestMethod]
-        public void ClosingParensAddativeAndMult() {
+        public void ClosingParensAddativeAndMult()
+        {
             var a = new Formula("5*(6+4)");
             a.Evaluate((_) => 1);
         }
 
         //add by add
         [TestMethod]
-        public void AddTwice() {
+        public void AddTwice()
+        {
             var a = new Formula("5+5+5");
             a.Evaluate((_) => 1);
         }
 
         //syntax errors
         [ExpectedException(typeof(FormulaError))]
-        public void SyntaxErrorParens1() {
+        public void SyntaxErrorParens0()
+        {
+            var a = new Formula("(");
+            Assert.AreEqual(15, a.Evaluate((_) => 1));
+        }
+
+        //syntax errors
+        [ExpectedException(typeof(FormulaError))]
+        public void SyntaxErrorParens1()
+        {
             var a = new Formula("(5+5+5");
-            Assert.AreEqual(15,a.Evaluate((_) => 1));
+            Assert.AreEqual(15, a.Evaluate((_) => 1));
         }
 
         [ExpectedException(typeof(FormulaError))]
@@ -312,11 +347,41 @@ namespace FormulaTests
             Assert.AreEqual(5, a.Evaluate((_) => d[8]));
         }
 
+        [ExpectedException(typeof(FormulaError))]
+        public void NoVar()
+        {
+            var a = new Formula("a1", (s) => s, (_) => false);
+            Assert.AreEqual(5, a.Evaluate((_) => 5));
+        }
+
+        [ExpectedException(typeof(FormulaError))]
+        public void EqualsNull()
+        {
+            var a = new Formula("1");
+            Assert.AreEqual(true, a.Equals(null));
+        }
+
+        [ExpectedException(typeof(FormulaError))]
+        public void EqualsOtherObj()
+        {
+            object a = new Formula("1");
+            object o = "hi";
+            Assert.AreEqual(true, a.Equals(o));
+        }
+
+        [ExpectedException(typeof(FormulaError))]
+        public void ErrorToken()
+        {
+            object a = new Formula("05.09.2001");
+            Assert.AreEqual(true, a.Equals(5));
+        }
+
         //fuzzing
         [TestMethod]
-        public void fuzz() {
+        public void fuzz()
+        {
             Dictionary<string, int> lookupDict = new Dictionary<string, int>();
-            Func<string,double> lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
+            Func<string, double> lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
             Random random = new Random();
             string testCase;
             object result;
@@ -328,10 +393,11 @@ namespace FormulaTests
                 try
                 {
                     result = new Formula(testCase).Evaluate(lu);
-                    Console.WriteLine(string.Format("{0} = {1}",testCase,result));
-                } catch (Exception e)
+                    Console.WriteLine(string.Format("{0} = {1}", testCase, result));
+                }
+                catch (Exception e)
                 {
-                    if(e.Message != "Division by zero") Console.WriteLine(string.Format("(should be valid case) test failed for {0}", testCase));
+                    if (e.Message != "Division by zero") Console.WriteLine(string.Format("(should be valid case) test failed for {0}", testCase));
                 }
 
 
