@@ -482,7 +482,7 @@ namespace SpreadsheetUtilities
                     .Value(lookup);
                 var rightValue = ((TokenNode)RightChild)
                     .Value(lookup);
-                if (rightValue.Equals(0) && primary.isDiv)throw new ArgumentException(dbz);
+                if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException(dbz);
                 return (double)(primary.primativeString switch
                 {
                     "*" =>
@@ -776,13 +776,17 @@ namespace SpreadsheetUtilities
                         if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
                         else
                         {
+                            var newPrimary = operatorStack.Pop();
+                            var newRight = valueStack.Pop();
+                            var newLeft = valueStack.Pop();
+                            var newValue = new TokenNode(
+                                primary: newPrimary,
+                                right: newRight,
+                                left: newLeft
+                                );
                             valueStack.Push(
-                            new TokenNode(
-                                primary: operatorStack.Pop(),
-                                right: valueStack.Pop(),
-                                left: valueStack.Pop()
-                                )
-                        );
+                                newValue
+                                );
                         }
                     }
                 }
