@@ -59,7 +59,6 @@ namespace SpreadsheetUtilities
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking;
 
-        // tese
         [GeneratedRegex(doubleAlonePattern, options: ro)] public static partial Regex isDouble();
         [GeneratedRegex(opPattern, options: ro)] public static partial Regex isOperation();
         [GeneratedRegex(tokenPattern, options: ro)] public static partial Regex findTokenRegex();
@@ -111,11 +110,13 @@ namespace SpreadsheetUtilities
         {
         }
 
-        private List<Token> tokens;
+        private readonly List<Token> tokens;
         private TokenNode ExecutableAst;
         private bool throwDivByZero = false;
         private bool throwOtherError = false;
         private const string dbz = "divide by zero";
+        private int hashCodeCash = 0;
+        private bool hasHashCode = false;
 
         /// <summary>
         /// Creates a Formula from a string that consists of an infix expression written as
@@ -145,26 +146,12 @@ namespace SpreadsheetUtilities
             var operatorStack = new Stack<Token>();
             var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, isValid);
             tokens = GetNormalTokens(formula, normalize, isValid).ToList();
-            try
-            {
-                foreach (var token in MultiplyBy1(tokens))
-                    if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
-                        procFunc(token);
-                ExecutableAst = valueStack.Pop().Optmizied();
-                if (valueStack.Count() > 0)
-                {
-                    throwOtherError = true;
-                }
-                if (operatorStack.Count() > 0)
-                {
-                    throwOtherError = true;
-                }
-            }
-            catch (Exception e)
-            {
-                throwDivByZero = e.Message.Equals(dbz);
-                if (!throwDivByZero) throw new FormulaFormatException("somethings wrong");
-            }
+            foreach (var token in MultiplyBy1(tokens))
+                if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
+                    procFunc(token);
+            ExecutableAst = valueStack.Pop().Optmizied();
+            throwDivByZero = ExecutableAst.IsDBZConst();
+            throwOtherError = (valueStack.Count > 0) || (operatorStack.Count > 0);
         }
 
         private static IEnumerable<Token> MultiplyBy1(IEnumerable<Token> tokenList)
@@ -199,22 +186,10 @@ namespace SpreadsheetUtilities
         /// </summary>
         public object Evaluate(Func<string, double> lookup)
         {
-            if (throwDivByZero)
-            {
-                return new FormulaError(dbz);
-            }
-            if (throwOtherError)
-            {
-                return new FormulaError("done messed up");
-            }
-            try
-            {
-                return ExecutableAst.Value(lookup);
-            }
-            catch (Exception e)
-            {
-                return new FormulaError(e.Message);
-            }
+            if (throwDivByZero) return new FormulaError(dbz);
+            if (throwOtherError) return new FormulaError("done messed up");
+            try { return ExecutableAst.Value(lookup); }
+            catch (Exception e) { return new FormulaError(e.Message); }
         }
 
         /// <summary>
@@ -273,8 +248,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public override bool Equals(object? obj)
         {
-            return (obj != null && (obj.GetType() == typeof(Formula)) && GetHashCode() == obj.GetHashCode());
-
+            return obj != null && (obj.GetType() == typeof(Formula)) && GetHashCode() == obj.GetHashCode();
         }
 
 
@@ -306,9 +280,6 @@ namespace SpreadsheetUtilities
             }
             return hashCodeCash;
         }
-
-        private int hashCodeCash = 0;
-        private bool hasHashCode = false;
 
         //types of tokens for the parse algorithm
         internal enum TokenType
@@ -346,7 +317,8 @@ namespace SpreadsheetUtilities
                         "*" => realLeft.constValue * realRight.constValue,
                         "/" => realLeft.constValue / realRight.constValue,
                         "+" => realLeft.constValue + realRight.constValue,
-                        _ => realLeft.constValue - realRight.constValue
+                        "-" => realLeft.constValue - realRight.constValue,
+                        _ => double.NaN
                     };
                 }
             }
@@ -356,82 +328,69 @@ namespace SpreadsheetUtilities
             {
                 if (primary.IsValue) return this;
                 if (HasConstValue) return new TokenNode(new Token(constValue.ToString()), null, null);
-                if (LeftChild != null)
+                if (LeftChild != null && RightChild != null)
                 {
-                    if (RightChild != null)
+                    var realLeft = ((TokenNode)LeftChild).Optmizied(unsafeOptimizations);
+                    var realRight = ((TokenNode)RightChild).Optmizied(unsafeOptimizations);
+                    if (primary.isAdd)
                     {
-                        var realLeft = ((TokenNode)LeftChild).Optmizied(unsafeOptimizations);
-                        var realRight = ((TokenNode)RightChild).Optmizied(unsafeOptimizations);
-                        if (primary.isAdd)
-                        {
-                            // 0 + % = %
-                            if (realLeft.constValue.Equals(0))
-                            {
-                                return realRight;
-                            }
-                            // % + 0 = %
-                            if (realRight.constValue.Equals(0))
-                            {
-                                return realLeft;
-                            }
-                        }
-                        if (primary.isMult)
-                        {
-                            // 1 * % = %
-                            if (realLeft.constValue.Equals(1))
-                            {
-                                return realRight;
-                            }
-                            // % * 1 = % 
-                            if (realRight.constValue.Equals(1))
-                            {
-                                return realLeft;
-                            }
-                        }
-                        if (primary.isSub)
-                        {
-                            // % - 0 = %
-                            if (realRight.constValue.Equals(0))
-                            {
-                                return realLeft;
-                            }
-                        }
-                        if (primary.isDiv)
-                        {
-                            // 0 / % = 0
-                            // if (realLeft.constValue.Equals(0)) return realLeft;
-
-                            // % / 1 = %
-                            if (realRight.constValue.Equals(1))
-                            {
-                                return realLeft;
-                            }
-                        }
-                        if (unsafeOptimizations)
-                        {
-                            //recipricol const division % / k1, k2 = 1/k1, do % * k2
-                            if (primary.isDiv && realRight.HasConstValue)
-                            {
-                                var multiplication = new Token("*");
-                                var recipricol = 1 / realRight.constValue;
-                                var recipricolString = recipricol.ToString();
-                                var recipricolToken = new Token(recipricolString);
-                                var recipricolTokenNode = new TokenNode(recipricolToken, null, null);
-                                return new TokenNode(
-                                    multiplication,
-                                    realLeft,
-                                    recipricolTokenNode
-                                    );
-                            }
-                            // TODO: tree balancing ((%1 * %2) * %3) * %4 = (%1 * %2) * (%3 * %4)
-                            // btw technically not valid for float types
-
-                            // TODO: %1 + %1 = 2 * %1
-                            // TODO: (k1 * %1) + %1, k2 = k1 + 1, do k2 * %
-                        }
+                        // 0 + % = %
+                        if (realLeft.constValue.Equals(0)) return realRight;
+                        // % + 0 = %
+                        if (realRight.constValue.Equals(0)) return realLeft;
                     }
+                    if (primary.isMult)
+                    {
+                        // 1 * % = %
+                        if (realLeft.constValue.Equals(1)) return realRight;
+                        // % * 1 = % 
+                        if (realRight.constValue.Equals(1)) return realLeft;
+                    }
+                    if (primary.isSub)
+                    {
+                        // % - 0 = %
+                        if (realRight.constValue.Equals(0)) return realLeft;
+                    }
+                    if (primary.isDiv)
+                    {
+                        // % / 1 = %
+                        if (realRight.constValue.Equals(1)) return realLeft;
+                    }
+                    if (unsafeOptimizations)
+                    {
+                        //recipricol const division % / k1, k2 = 1/k1, do % * k2
+                        if (primary.isDiv && realRight.HasConstValue)
+                        {
+                            return new TokenNode(
+                                new Token("*"),
+                                realLeft,
+                                new TokenNode(
+                                    new Token(
+                                        (1 / realRight.constValue).ToString()
+                                        ),
+                                    null, null)
+                                );
+                        }
+                        // TODO: tree balancing ((%1 * %2) * %3) * %4 = (%1 * %2) * (%3 * %4)
+                        // btw technically not valid for float types
+
+                        // TODO: %1 + %1 = 2 * %1
+                        // TODO: (k1 * %1) + %1, k2 = k1 + 1, do k2 * %
+                    }
+
                 }
                 return this;
+            }
+
+            public readonly bool IsDBZConst()
+            {
+                var rightMaybe = RightChild;
+                var leftMaybe = LeftChild;
+                if (rightMaybe == null || leftMaybe == null) return false;
+                var right = (TokenNode)rightMaybe;
+                var left = (TokenNode)leftMaybe;
+                if (right.IsDBZConst() || left.IsDBZConst()) return true;
+                return primary.isDiv && right.HasConstValue && right.constValue.Equals(0);
             }
 
             //does a preorder traversal lisp-y string for debugging "k" indicates calculated constant vals
@@ -469,19 +428,11 @@ namespace SpreadsheetUtilities
             //you would have to divide by infinite
             public readonly double Value(Func<string, double> lookup)
             {
-                if (HasConstValue)
-                {
-                    return constValue;
-                }
-                if (primary.isVar)
-                {
-                    return lookup(primary.primativeString);
-                }
+                if (HasConstValue) return constValue;
+                if (primary.isVar) return lookup(primary.primativeString);
                 if (LeftChild == null || RightChild == null) return double.NaN;
-                var leftValue = ((TokenNode)LeftChild)
-                    .Value(lookup);
-                var rightValue = ((TokenNode)RightChild)
-                    .Value(lookup);
+                var leftValue = ((TokenNode)LeftChild).Value(lookup);
+                var rightValue = ((TokenNode)RightChild).Value(lookup);
                 if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException(dbz);
                 return (double)(primary.primativeString switch
                 {
@@ -491,8 +442,9 @@ namespace SpreadsheetUtilities
                         leftValue / rightValue,
                     "+" =>
                         leftValue + rightValue,
-                    _ =>
-                        leftValue - rightValue
+                    "-" =>
+                        leftValue - rightValue,
+                    _ => double.NaN //cant happen
                 });
             }
         }
@@ -527,52 +479,23 @@ namespace SpreadsheetUtilities
             {
                 if (isImm = double.TryParse(primative, out double d)) primativeString = d.ToString();
                 else primativeString = primative;
-                isVar = Utility
-                    .isVariableRegex()
-                    .IsMatch(primative);
-                isDiv = Utility
-                    .isDivRegex()
-                    .IsMatch(primative);
-                isMult = Utility
-                    .isMultRegex()
-                    .IsMatch(primative);
-                isAdd = Utility
-                    .isAddRegex()
-                    .IsMatch(primative);
-                isSub = Utility
-                    .isSubRegex()
-                    .IsMatch(primative);
-                isLParens = Utility
-                    .isOpeningParenRegex()
-                    .IsMatch(primative);
-                isRParens = Utility
-                    .isClosingParenRegex()
-                    .IsMatch(primative);
+                isVar = Utility.isVariableRegex().IsMatch(primative);
+                isDiv = Utility.isDivRegex().IsMatch(primative);
+                isMult = Utility.isMultRegex().IsMatch(primative);
+                isAdd = Utility.isAddRegex().IsMatch(primative);
+                isSub = Utility.isSubRegex().IsMatch(primative);
+                isLParens = Utility.isOpeningParenRegex().IsMatch(primative);
+                isRParens = Utility.isClosingParenRegex().IsMatch(primative);
             }
             public readonly TokenType Type
             {
                 get
                 {
-                    if (IsAddative)
-                    {
-                        return TokenType.additive;
-                    }
-                    if (IsMultiplicative)
-                    {
-                        return TokenType.multiplicative;
-                    }
-                    if (isVar)
-                    {
-                        return TokenType.var;
-                    }
-                    if (isLParens)
-                    {
-                        return TokenType.openParen;
-                    }
-                    if (isRParens)
-                    {
-                        return TokenType.closedParen;
-                    }
+                    if (IsAddative) return TokenType.additive;
+                    if (IsMultiplicative) return TokenType.multiplicative;
+                    if (isVar) return TokenType.var;
+                    if (isLParens) return TokenType.openParen;
+                    if (isRParens) return TokenType.closedParen;
                     return TokenType.val;
                 }
             }
@@ -604,26 +527,14 @@ namespace SpreadsheetUtilities
             foreach (var s in Utility.findTokenRegex().Split(formula))
                 if (!Utility.isWhiteSpaceRegex().IsMatch(s))
                 {
-                    Token token;
-                    if (double.TryParse(s, out double d))
-                    {
-                        var tokenString = d.ToString();
-                        token = new Token(tokenString);
-                    }
-                    else
-                    {
-                        var tokenString = s.Trim();
-                        token = new Token(tokenString);
-                    }
-                    if (token.isVar)
-                    {
-                        token = new Token(normalize(token.primativeString));
-                    }
+                    var token = new Token(
+                        double.TryParse(s, out double d) ?
+                            d.ToString() :
+                            s.Trim()
+                        );
+                    if (token.isVar) token = new Token(normalize(token.primativeString));
                     if (token.IsErroneos()) throw new FormulaFormatException("die exception");
-                    if (isValid(token.primativeString))
-                    {
-                        yield return token;
-                    }
+                    if (isValid(token.primativeString)) yield return token;
                     else throw new FormulaFormatException("die exception");
                 }
         }
@@ -667,25 +578,13 @@ namespace SpreadsheetUtilities
             {
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
                 {
-                    if (valueStack.Count != 0)
-                    {
-                        var newRight = new TokenNode(token, null, null);
-                        if (operatorStack.Peek().isDiv)
-                            if (newRight.HasConstValue)
-                                if (newRight.constValue.Equals(0))
-                                    throw new ArgumentException(dbz);
-                        var newOperator = operatorStack.Pop();
-                        var newLeft = valueStack.Pop();
-
-                        var newTokenNode = new TokenNode(
-                            newOperator,
-                            left: newLeft,
-                            right: newRight
-                            );
-                        valueStack.Push(newTokenNode);
-                        return;
-                    }
-                    throw new ArgumentException("Infix operator only found one operand");
+                    if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
+                    valueStack.Push(new TokenNode(
+                        operatorStack.Pop(),
+                        left: valueStack.Pop(),
+                        right: new TokenNode(token, null, null)
+                        ));
+                    return;
                 }
                 valueStack.Push(new TokenNode(token, null, null));
             }
@@ -695,13 +594,8 @@ namespace SpreadsheetUtilities
             /// </summary>
             void varFunc(Token token)
             {
-                var isThisVarARealVar = isValid(token.primativeString);
-                if (isThisVarARealVar)
-                {
-                    immFunc(token);
-                    return;
-                }
-                throw new ArgumentException("var bad");
+                if (!isValid(token.primativeString)) throw new ArgumentException("var bad");
+                immFunc(token);
             }
 
             /// <summary>
@@ -716,19 +610,14 @@ namespace SpreadsheetUtilities
             {
                 if (operatorStack.Peek().IsAddative)
                 {
-                    if (valueStack.Count >= 2)
-                    {
-
-                        valueStack.Push(
-                            new TokenNode(
-                                operatorStack.Pop(),
-                                right: valueStack.Pop(),
-                                left: valueStack.Pop()
-                                )
-                            );
-                        return;
-                    }
-                    throw new ArgumentException("adding just one");
+                    if (valueStack.Count < 2) throw new ArgumentException("adding just one");
+                    valueStack.Push(
+                        new TokenNode(
+                            operatorStack.Pop(),
+                            right: valueStack.Pop(),
+                            left: valueStack.Pop()
+                            )
+                        );
                 }
                 operatorStack.Push(token);
             }
@@ -747,10 +636,7 @@ namespace SpreadsheetUtilities
             /// 
             /// duplicate of mult. cry about it
             /// </summary>
-            void openParenFunc(Token token)
-            {
-                operatorStack.Push(token);
-            }
+            void openParenFunc(Token token) => operatorStack.Push(token);
 
             /// <summary>
             /// Do all three of these steps in order:
@@ -769,48 +655,29 @@ namespace SpreadsheetUtilities
             /// </summary>
             void closeParenFunc(Token token)
             {
-                if (operatorStack.Count != 0)
+                if (operatorStack.Count != 0 && operatorStack.Peek().IsAddative)
                 {
-                    if (operatorStack.Peek().IsAddative)
-                    {
-                        if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
-                        else
-                        {
-                            var newPrimary = operatorStack.Pop();
-                            var newRight = valueStack.Pop();
-                            var newLeft = valueStack.Pop();
-                            var newValue = new TokenNode(
-                                primary: newPrimary,
-                                right: newRight,
-                                left: newLeft
-                                );
-                            valueStack.Push(
-                                newValue
-                                );
-                        }
-                    }
+                    if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
+                    valueStack.Push(
+                        new TokenNode(
+                        primary: operatorStack.Pop(),
+                        right: valueStack.Pop(),
+                        left: valueStack.Pop()
+                        ));
                 }
                 if (operatorStack.Count == 0 || !operatorStack.Pop().isLParens) throw new ArgumentException("Unmatched closing parenthesis");
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
                 {
                     if (valueStack.Count < 2) throw new ArgumentException("idk something went wrong");
-                    var rightValue = valueStack.Pop();
-                    if (rightValue.primary.isImm)
-                        if (rightValue.HasConstValue)
-                            if (rightValue.constValue.Equals(0))
-                                throw new ArgumentException(dbz);
-                    var operatorFromStack = operatorStack.Pop();
-                    var leftValue = valueStack.Pop();
-                    var newValue = new TokenNode(
-                        operatorFromStack,
-                        right: rightValue,
-                        left: leftValue
-                        );
-                    valueStack.Push(newValue);
+                    valueStack.Push(new TokenNode(
+                        operatorStack.Pop(),
+                        right: valueStack.Pop(),
+                        left: valueStack.Pop()
+                        ));
                 }
             }
-
-            var dictionary = new Dictionary<TokenType, TokenProcFunc> {
+            // dictionary of regex matched with correct response.
+            return new Dictionary<TokenType, TokenProcFunc> {
                 {TokenType.val, immFunc },
                 {TokenType.var, varFunc },
                 {TokenType.additive, addativeFunc },
@@ -818,8 +685,6 @@ namespace SpreadsheetUtilities
                 {TokenType.openParen, openParenFunc },
                 {TokenType.closedParen, closeParenFunc },
             };
-            // dictionary of regex matched with correct response.
-            return dictionary;
         }
     }
 
