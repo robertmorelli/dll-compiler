@@ -1,6 +1,17 @@
-# DEpendency graph tracker
-### it tracks dependencies with O 1 lookup and O 1 insertion and O n space
-### helper method discussion
-##### not super sure its necessary to have helper methods on this one. my strat resulted in no function being longer than 7 lines of code so its super hard to justify helper methods
+```
+Author:     Robert Morelli
+Partner:    None
+Start Date: 1-7-24
+Course:     CS 3505, University of Utah, School of Computing
+GitHub ID:  robertmorelli
+Repo:       https://github.com/robertmorelli/Spreadsheet-temp
+Commit Date: 2-8-24
+Solution:   Spreadsheet
+Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in Academic Coursework.
+```
 
-### hours: 2
+# Comments to Evaluators:
+None
+
+# Time Expenditure:
+    -  Predicted Hours:          4        Actual Hours:   1

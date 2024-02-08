@@ -1,7 +1,17 @@
-# Dependency Graph tests
-### For testing the dependency graph class
-## Tests I added
-- coverage test: attempt to cover every line of code by sending to both the existence and nonexistence branches in each function
-- memory test: do a bunch of operations... then sample the memory used. then do more operations. then sample the memory again. in theory this should be the same memory or less but in reality mem allocators are complicated so the test is slightly biased
+```
+Author:     Robert Morelli
+Partner:    None
+Start Date: 1-7-24
+Course:     CS 3505, University of Utah, School of Computing
+GitHub ID:  robertmorelli
+Repo:       https://github.com/robertmorelli/Spreadsheet-temp
+Commit Date: 2-8-24
+Solution:   Spreadsheet
+Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in Academic Coursework.
+```
 
-- ### time spent: 10 hours
+# Comments to Evaluators:
+None
+
+# Time Expenditure:
+    - Assignment Two:   Predicted Hours:          4        Actual Hours:   1
