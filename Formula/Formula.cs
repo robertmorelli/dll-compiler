@@ -246,10 +246,10 @@ namespace SpreadsheetUtilities
         /// new Formula("x1+y2").Equals(new Formula("y2+x1")) is false
         /// new Formula("2.0 + x7").Equals(new Formula("2.000 + x7")) is true
         /// </summary>
-        public override bool Equals(object? obj)
-        {
-            return obj != null && (obj.GetType() == typeof(Formula)) && GetHashCode() == obj.GetHashCode();
-        }
+        public override bool Equals(object? obj) => 
+            obj != null &&
+            (obj.GetType() == typeof(Formula)) &&
+            GetHashCode() == obj.GetHashCode();
 
 
         /// <summary>
@@ -366,10 +366,10 @@ namespace SpreadsheetUtilities
                                 realLeft,
                                 new TokenNode(
                                     new Token(
-                                        (1 / realRight.constValue).ToString()
-                                        ),
-                                    null, null)
-                                );
+                                        (1 / realRight.constValue).ToString()),
+                                        null,
+                                        null
+                                ));
                         }
                         // TODO: tree balancing ((%1 * %2) * %3) * %4 = (%1 * %2) * (%3 * %4)
                         // btw technically not valid for float types
@@ -434,7 +434,7 @@ namespace SpreadsheetUtilities
                 var leftValue = ((TokenNode)LeftChild).Value(lookup);
                 var rightValue = ((TokenNode)RightChild).Value(lookup);
                 if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException(dbz);
-                return (double)(primary.primativeString switch
+                return primary.primativeString switch
                 {
                     "*" =>
                         leftValue * rightValue,
@@ -445,7 +445,7 @@ namespace SpreadsheetUtilities
                     "-" =>
                         leftValue - rightValue,
                     _ => double.NaN //cant happen
-                });
+                };
             }
         }
 
