@@ -19,7 +19,6 @@ using System.Text.RegularExpressions;
 ///     it. In the larger context this is intended to be used to evaluate
 ///     formulas in a spreadsheet. The evaluator takes in a string and
 ///     parses/evaluates it using the provided algorithm.
-///     
 /// </summary>
 
 

@@ -14,10 +14,6 @@
 ///     A tester for the FormulaEvaluator class. This program uses a CFG
 ///     to generate random formulas and then evaluates them using the
 ///     the evaluator.
-/// I, Robert Morelli, certify that I wrote this code from scratch and
-/// did not copy it in part or whole from code that is not my own. All 
-/// references to code that is not my own used in the completion of the
-/// assignments are cited in my README file.
 /// </summary>
 using FormulaEvaluator;
 using SpreadsheetUtilities;
