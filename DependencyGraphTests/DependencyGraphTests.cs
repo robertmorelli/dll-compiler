@@ -1,6 +1,10 @@
 ///<summary>
 ///tests for the dependency graph
 /// first 20 tests should test every comination of paths through the code
+/// I, Robert Morelli, certify that I wrote this code from scratch and
+/// did not copy it in part or whole from code that is not my own. All 
+/// references to code that is not my own used in the completion of the
+/// assignments are cited in my README file.
 /// </summary>
 using System;
 using System.Collections.Generic;

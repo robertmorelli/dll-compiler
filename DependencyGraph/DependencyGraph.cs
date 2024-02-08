@@ -1,7 +1,13 @@
-﻿// Worst Implementation of the dependency graph assignment
-// Version 4
-// Built by Robert Morelli for 3500
-// solution -> store everything twice so lookup is trivial
+﻿/// <summary>
+/// Worst Implementation of the dependency graph assignment
+/// Version 4
+/// Built by Robert Morelli for 3500
+/// solution -> store everything twice so lookup is trivial
+/// I, Robert Morelli, certify that I wrote this code from scratch and
+/// did not copy it in part or whole from code that is not my own. All 
+/// references to code that is not my own used in the completion of the
+/// assignments are cited in my README file.
+/// </summary>s
 
 namespace SpreadsheetUtilities
 {

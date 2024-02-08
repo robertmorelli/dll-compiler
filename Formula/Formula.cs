@@ -6,7 +6,12 @@
 /// if you want to know why tf I wrote this
 /// probably look at what an AST is:
 /// https://en.wikipedia.org/wiki/Abstract_syntax_tree
-/// 
+///
+/// I, Robert Morelli, certify that I wrote this code from scratch and
+/// did not copy it in part or whole from code that is not my own. All 
+/// references to code that is not my own used in the completion of the
+/// assignments are cited in my README file.
+///
 /// I did ask the prof and he said I was allowed to do this
 /// </summary>
 
