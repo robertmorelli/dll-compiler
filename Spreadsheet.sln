@@ -9,11 +9,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormulaEvaluatorTester", "F
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DependencyGraph", "DependencyGraph\DependencyGraph.csproj", "{E486B17D-ACBA-45A2-9604-C24D6DA92A8B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DependencyGraphTests", "DependencyGraphTests\DependencyGraphTests.csproj", "{16C2BA63-3380-4053-BBB4-B67493EABA2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DependencyGraphTests", "DependencyGraphTests\DependencyGraphTests.csproj", "{16C2BA63-3380-4053-BBB4-B67493EABA2C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Formula", "Formula\Formula.csproj", "{F9083B04-FF3F-45AB-AE4D-17E592D58BB1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Formula", "Formula\Formula.csproj", "{F9083B04-FF3F-45AB-AE4D-17E592D58BB1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FormulaTests", "FormulaTests\FormulaTests.csproj", "{BA7F3BBE-41FC-4B93-A6F8-D154937778AE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormulaTests", "FormulaTests\FormulaTests.csproj", "{BA7F3BBE-41FC-4B93-A6F8-D154937778AE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spreadsheet", "Spreadsheet\Spreadsheet.csproj", "{FF3ADD31-6F03-48F9-B3C7-335175A23061}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +47,10 @@ Global
 		{BA7F3BBE-41FC-4B93-A6F8-D154937778AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BA7F3BBE-41FC-4B93-A6F8-D154937778AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BA7F3BBE-41FC-4B93-A6F8-D154937778AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FF3ADD31-6F03-48F9-B3C7-335175A23061}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF3ADD31-6F03-48F9-B3C7-335175A23061}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF3ADD31-6F03-48F9-B3C7-335175A23061}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF3ADD31-6F03-48F9-B3C7-335175A23061}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
