@@ -14,6 +14,7 @@
 /// File Contents:
 /// My tests for my implementation of AbstractSpreadsheet
 /// </summary>
+using SpreadsheetUtilities;
 using SS;
 
 namespace SpreadsheetTests
@@ -25,22 +26,68 @@ namespace SpreadsheetTests
         public void TestMethod1()
         {
             Spreadsheet sheet = new();
-            Console.WriteLine(sheet.SetCellContents("a4", "a3").ToList().Aggregate("", (a, b) => a + b));
-            Console.WriteLine(sheet.SetCellContents("a3", "a2").ToList().Aggregate("", (a, b) => a + b));
-            Console.WriteLine(sheet.SetCellContents("a2", "a1").ToList().Aggregate("", (a, b) => a + b));
-            Console.WriteLine(sheet.SetCellContents("a5", "a4").ToList().Aggregate("", (a, b) => a + b));
-            Console.WriteLine(sheet.SetCellContents("a1", 1).ToList().Aggregate("", (a, b) => a + b));
-            Console.WriteLine(sheet.GetNamesOfAllNonemptyCells().ToList().Aggregate("", (a, b) => a + b));
-            Console.WriteLine(sheet.GetCellContents("a5"));
+            sheet.SetCellContents("a4", "a3");
+            sheet.SetCellContents("a3", "a2");
+            sheet.SetCellContents("a2", "a1");
+            sheet.SetCellContents("a1", 1);
+            Console.WriteLine(sheet.GetNamesOfAllNonemptyCells().Count());
+            Console.WriteLine(sheet.GetCellContents("a4"));
         }
 
-        [TestMethod,ExpectedException(typeof(ArgumentException))]
+        [TestMethod, ExpectedException(typeof(CircularException))]
         public void TestMethod2()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "a2");
             sheet.SetCellContents("a2", "a3");
             sheet.SetCellContents("a3", "a1");
+        }
+
+
+        
+        [TestMethod, ExpectedException(typeof(FormulaFormatException))]
+        public void TestMethod3()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", "+a2");
+            sheet.GetCellContents("a1");
+        }
+        
+        [TestMethod, ExpectedException(typeof(InvalidNameException))]
+        public void TestMethod4()
+        {
+            Spreadsheet sheet = new();
+            sheet.GetCellContents("--a1");
+        }
+
+        [TestMethod, ExpectedException(typeof(InvalidNameException))]
+        public void TestMethod5()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("--a1", "a2");
+        }
+
+        [TestMethod]
+        public void TestMethod6()
+        {
+            Spreadsheet sheet = new();
+            sheet.GetCellContents("a1");
+        }
+
+        [TestMethod]
+        public void TestMethod7()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", "a2");
+            Assert.AreEqual(typeof(FormulaError),sheet.GetCellContents("a1").GetType());
+        }
+
+
+        [TestMethod]
+        public void TestMethod8()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", "");
         }
     }
 }

@@ -123,7 +123,6 @@ namespace SpreadsheetUtilities
         private readonly List<Token> tokens;
         private TokenNode ExecutableAst;
         private bool throwDivByZero = false;
-        private bool throwOtherError = false;
         private const string dbz = "divide by zero";
         private int hashCodeCash = 0;
         private bool hasHashCode = false;
@@ -156,12 +155,14 @@ namespace SpreadsheetUtilities
             var operatorStack = new Stack<Token>();
             var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, isValid);
             tokens = GetNormalTokens(formula, normalize, isValid).ToList();
+            if (tokens.Count == 0) throw new FormulaFormatException("");
             foreach (var token in MultiplyBy1(tokens))
                 if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
                     procFunc(token);
-            ExecutableAst = valueStack.Pop().Optmizied();
+            ExecutableAst = valueStack.Pop();
             throwDivByZero = ExecutableAst.IsDBZConst();
-            throwOtherError = (valueStack.Count > 0) || (operatorStack.Count > 0);
+            ExecutableAst = ExecutableAst.Optmizied();
+            if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("");
         }
 
         private static IEnumerable<Token> MultiplyBy1(IEnumerable<Token> tokenList)
@@ -197,7 +198,6 @@ namespace SpreadsheetUtilities
         public object Evaluate(Func<string, double> lookup)
         {
             if (throwDivByZero) return new FormulaError(dbz);
-            if (throwOtherError) return new FormulaError("done messed up");
             try { return ExecutableAst.Value(lookup); }
             catch (Exception e) { return new FormulaError(e.Message); }
         }
@@ -217,6 +217,7 @@ namespace SpreadsheetUtilities
             tokens
                 .FindAll((token) => token.isVar)
                 .Select((token) => token.primativeString)
+                .Distinct()
                 .AsEnumerable();
 
         /// <summary>
@@ -542,10 +543,13 @@ namespace SpreadsheetUtilities
                             d.ToString() :
                             s.Trim()
                         );
-                    if (token.isVar) token = new Token(normalize(token.primativeString));
+                    if (token.isVar)
+                    {
+                        token = new Token(normalize(token.primativeString));
+                        if (!isValid(token.primativeString)) throw new FormulaFormatException("die exception");
+                    }
                     if (token.IsErroneos()) throw new FormulaFormatException("die exception");
-                    if (isValid(token.primativeString)) yield return token;
-                    else throw new FormulaFormatException("die exception");
+                    else yield return token;
                 }
         }
 
@@ -620,7 +624,7 @@ namespace SpreadsheetUtilities
             {
                 if (operatorStack.Peek().IsAddative)
                 {
-                    if (valueStack.Count < 2) throw new ArgumentException("adding just one");
+                    if (valueStack.Count < 2) throw new FormulaFormatException("adding just one");
                     valueStack.Push(
                         new TokenNode(
                             operatorStack.Pop(),
@@ -667,7 +671,7 @@ namespace SpreadsheetUtilities
             {
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsAddative)
                 {
-                    if (valueStack.Count < 2) throw new ArgumentException("unary add within parenthesis");
+                    if (valueStack.Count < 2) throw new FormulaFormatException("unary add within parenthesis");
                     valueStack.Push(
                         new TokenNode(
                         primary: operatorStack.Pop(),
@@ -675,10 +679,10 @@ namespace SpreadsheetUtilities
                         left: valueStack.Pop()
                         ));
                 }
-                if (operatorStack.Count == 0 || !operatorStack.Pop().isLParens) throw new ArgumentException("Unmatched closing parenthesis");
+                if (operatorStack.Count == 0 || !operatorStack.Pop().isLParens) throw new FormulaFormatException("Unmatched closing parenthesis");
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
                 {
-                    if (valueStack.Count < 2) throw new ArgumentException("idk something went wrong");
+                    if (valueStack.Count < 2) throw new FormulaFormatException("idk something went wrong");
                     valueStack.Push(new TokenNode(
                         operatorStack.Pop(),
                         right: valueStack.Pop(),

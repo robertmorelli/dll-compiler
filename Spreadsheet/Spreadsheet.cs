@@ -13,6 +13,8 @@
 ///
 /// File Contents:
 /// My implementation of AbstractSpreadsheet
+/// I am not using the POS tier aweful GetCellsToRecalculate and Visit methods
+/// These are aweful implementations. see the readme for why I hate them.
 /// </summary>
 
 
@@ -22,14 +24,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
+using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace SS
 {
+    internal partial class Utility
+    {
+        [GeneratedRegex(@"^[_a-zA-Z][_a-zA-Z0-9]+$", options:
+            RegexOptions.IgnorePatternWhitespace |
+            RegexOptions.NonBacktracking)]
+        public static partial Regex validName();
+    }
     public class Spreadsheet : AbstractSpreadsheet
     {
         // private access dictionary of strings to Cell "cells" thats initialized to an empty dictionary
         // (good thing i left that comment so you could understand my code)
-        private readonly Dictionary<string, Cell> cells = [];
+        private readonly Dictionary<string, ICell> cells = [];
         private readonly DependencyGraph graph = new();
 
         /// <inheritdoc/>
@@ -38,7 +50,11 @@ namespace SS
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public override object GetCellContents(string name) => cells[name].formula;
+        public override object GetCellContents(string name)
+        {
+            if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
+            return cells.TryGetValue(name, out ICell? value) ? value.Value() : "";
+        }
 
         /// <inheritdoc/>
         /// <summary>
@@ -54,7 +70,7 @@ namespace SS
         /// <param name="name"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, double number) => SetCellContents(name, number.ToString());
+        public override ISet<string> SetCellContents(string name, double number) => SetCellContents(name, new Formula(number.ToString()));
 
         /// <inheritdoc/>
         /// <summary>
@@ -63,7 +79,11 @@ namespace SS
         /// <param name="name"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, string text) => SetCellContents(name, new Formula(text));
+        public override ISet<string> SetCellContents(string name, string text)
+        {
+            if ((text = text.Trim()).Equals("")) return new HashSet<string>();
+            return SetCellContents(name, new Formula(text));
+        }
 
         /// <inheritdoc/>
         /// <summary>
@@ -74,13 +94,24 @@ namespace SS
         /// <returns></returns>
         public override ISet<string> SetCellContents(string name, Formula formula)
         {
-            Cell cell = new(name, formula);
-            if (IsRecursive(cell)) throw new ArgumentException();
+            if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
+            ICell cell = new FormulaCell(name, formula, this);
+
+            //we dont support using the callstack as a data queue in our household
+            Queue<string> dependees = new(cell.Dependencies);
+            HashSet<string> recursiveDeps = [];
+            //level order traversal. if you are confused maybe read a book?
+            while (dependees.TryDequeue(out string? d))//question mark gets promoted away in this line so dont worry
+                if (recursiveDeps.Add(d))//if its already in there skip the children
+                    if (recursiveDeps.Contains(cell.ID)) throw new CircularException();//throws circular before add
+                    else foreach (var dd in GetDirectDependents(d))
+                            dependees.Enqueue(dd);//so that the descendents will be processed
+
             // set the cell to be a new Cell of a Formula
             // and then set the dependees to be the variables from said new formula
-            graph.ReplaceDependents(name, (cells[name] = cell).formula.GetVariables());
+            graph.ReplaceDependents(name, (cells[name] = cell).Dependencies);
             // the line below literally kills osama bin laden. no lie
-            return RecursiveDeps(name);
+            return recursiveDeps;
         }
 
         /// <inheritdoc/>
@@ -92,56 +123,42 @@ namespace SS
         protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependents(name);
 
         /// <summary>
-        /// All dependencies at all deps
-        /// </summary>
-        /// <param name="name">
-        /// The var name to get deps
-        /// </param>
-        /// <returns>
-        /// inda description homie
-        /// </returns>
-        private HashSet<string> RecursiveDeps(string name) => AllDeps(GetDirectDependents(name));
-
-        /// <summary>
-        /// All dependencies at all depths for a formula
-        /// </summary>
-        /// <param name="topLevelDependencies">
-        /// the dependencies to check dependencies for
-        /// </param>
-        /// <returns>
-        /// inda description homie
-        /// </returns>
-        private HashSet<string> AllDeps(IEnumerable<string> topLevelDependencies)
-        {
-            //we dont support using the callstack as a data queue in our household
-            Queue<string> dependees = new(topLevelDependencies);
-            HashSet<string> recursiveDeps = [];
-            //level order traversal. if you are confused maybe read a book?
-            while (dependees.TryDequeue(out string? d)) if(recursiveDeps.Add(d)) foreach (var dd in GetDirectDependents(d)) dependees.Enqueue(dd);
-            return recursiveDeps;
-        }
-
-        /// <summary>
-        /// Determine if a cell is a valid addition (non-recursive)
-        /// </summary>
-        /// <param name="cell">
-        /// Cell we are deciding if we can add
-        /// </param>
-        /// <returns>
-        /// inda description homie
-        /// </returns>
-        private bool IsRecursive(Cell cell) => AllDeps(cell.formula.GetVariables()).Contains(cell.ID);
-
-
-
-        /// <summary>
         /// For storing a specific cell with an id and formula
         /// IDEK know why I need this. the instructions say I need it
         /// </summary>
-        private struct Cell(string name, Formula f)
+        private interface ICell
         {
-            public string ID = name;
-            public Formula formula = f;
+            public string ID { get; }
+            public ISet<string> Dependencies { get; }
+            public object Value();
+        }
+
+        /// <summary>
+        /// formula version of a cell
+        /// this is so i can add more stuff later
+        /// </summary>
+        /// <param name="n">for the id</param>
+        /// <param name="f">for the formula</param>
+        /// <param name="s">need a spreadsheet reference for var lookup</param>
+        private readonly struct FormulaCell(string n, Formula f, Spreadsheet s) : ICell
+        {
+            private readonly Formula formula = f;
+            private readonly Spreadsheet spreadsheet = s;
+            private readonly string name = n;
+
+            string ICell.ID { get => name; }
+            ISet<string> ICell.Dependencies { get => formula.GetVariables().ToHashSet(); }
+            object ICell.Value()
+            {
+                Dictionary<string, double> validVars = [];
+                foreach (string dep in formula.GetVariables())
+                {
+                    var val = spreadsheet.GetCellContents(dep);
+                    if (val.GetType() == typeof(double)) validVars[dep] = (double)val;
+                    else return new FormulaError();
+                }
+                return formula.Evaluate((s) => (double)validVars[s]);
+            }
         }
     }
 }
