@@ -95,7 +95,7 @@ namespace SpreadsheetUtilities
         public IEnumerable<string> GetDependents(string s)
         {
             //pretty self explanitory
-            return dependantSets.ContainsKey(s) ? dependantSets[s] : [];
+            return (dependantSets.ContainsKey(s) ? dependantSets[s] : []).AsEnumerable();
         }
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace SpreadsheetUtilities
         public IEnumerable<string> GetDependees(string s)
         {
             //pretty self explanitory
-            return dependeeSets.ContainsKey(s) ? dependeeSets[s] : [];
+            return (dependeeSets.ContainsKey(s) ? dependeeSets[s] : []).AsEnumerable();
         }
 
         /// <summary>
