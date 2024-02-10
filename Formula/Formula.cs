@@ -232,7 +232,7 @@ namespace SpreadsheetUtilities
         public override string ToString() =>
             tokens
                 .Select((token) => token.primativeString)
-                .Aggregate("", (a, b) => a + b);
+                .Aggregate("", (a, b) => a + (a.Length > 0 ? " " : "") + b);
 
         /// <summary>
         ///  <change> make object nullable </change>

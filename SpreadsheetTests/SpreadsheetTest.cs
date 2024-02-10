@@ -16,15 +16,31 @@
 /// </summary>
 using SS;
 
-namespace DevelopmentTests
+namespace SpreadsheetTests
 {
     [TestClass]
     public class SpreadsheetTest
     {
         [TestMethod]
-        public void SetCellAndRetreive()
+        public void TestMethod1()
         {
-            new SS.Spreadsheet();
+            Spreadsheet sheet = new();
+            Console.WriteLine(sheet.SetCellContents("a4", "a3").ToList().Aggregate("", (a, b) => a + b));
+            Console.WriteLine(sheet.SetCellContents("a3", "a2").ToList().Aggregate("", (a, b) => a + b));
+            Console.WriteLine(sheet.SetCellContents("a2", "a1").ToList().Aggregate("", (a, b) => a + b));
+            Console.WriteLine(sheet.SetCellContents("a5", "a4").ToList().Aggregate("", (a, b) => a + b));
+            Console.WriteLine(sheet.SetCellContents("a1", 1).ToList().Aggregate("", (a, b) => a + b));
+            Console.WriteLine(sheet.GetNamesOfAllNonemptyCells().ToList().Aggregate("", (a, b) => a + b));
+            Console.WriteLine(sheet.GetCellContents("a5"));
+        }
+
+        [TestMethod,ExpectedException(typeof(ArgumentException))]
+        public void TestMethod2()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", "a2");
+            sheet.SetCellContents("a2", "a3");
+            sheet.SetCellContents("a3", "a1");
         }
     }
 }

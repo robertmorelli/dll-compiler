@@ -95,7 +95,7 @@ namespace SpreadsheetUtilities
         public IEnumerable<string> GetDependents(string s)
         {
             //pretty self explanitory
-            return (dependantSets.ContainsKey(s) ? dependantSets[s] : []).AsEnumerable();
+            return (dependantSets.ContainsKey(s) ? dependantSets[s] : []);
         }
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace SpreadsheetUtilities
         public IEnumerable<string> GetDependees(string s)
         {
             //pretty self explanitory
-            return (dependeeSets.ContainsKey(s) ? dependeeSets[s] : []).AsEnumerable();
+            return (dependeeSets.ContainsKey(s) ? dependeeSets[s] : []);
         }
 
         /// <summary>
@@ -124,6 +124,7 @@ namespace SpreadsheetUtilities
             dependantSets[s].Add(t);
             if (!dependeeSets.ContainsKey(t)) dependeeSets[t] = [];
             dependeeSets[t].Add(s);
+
         }
 
 
@@ -156,7 +157,7 @@ namespace SpreadsheetUtilities
             if (!dependantSets.ContainsKey(s)) dependantSets[s] = [];
             foreach (var t in dependantSets[s]) RemoveDependency(s, t);
             foreach (var t in newDependents) AddDependency(s, t);
-            if (dependantSets.ContainsKey(s)) if (this[s] == 0) dependantSets.Remove(s);
+            if (dependantSets.ContainsKey(s)) if (!HasDependents(s)) dependantSets.Remove(s);
         }
 
 
@@ -172,7 +173,7 @@ namespace SpreadsheetUtilities
             if (!dependeeSets.ContainsKey(s)) dependeeSets[s] = [];
             foreach (var t in dependeeSets[s]) RemoveDependency(t, s);
             foreach (var t in newDependees) AddDependency(t, s);
-            if (dependeeSets.ContainsKey(s)) if (this[s] == 0) dependeeSets.Remove(s);
+            if (dependeeSets.ContainsKey(s)) if (!HasDependees(s)) dependeeSets.Remove(s);
         }
     }
 

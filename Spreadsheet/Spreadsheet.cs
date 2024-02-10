@@ -25,7 +25,7 @@ using System.Threading.Tasks;
 
 namespace SS
 {
-    internal class Spreadsheet : AbstractSpreadsheet
+    public class Spreadsheet : AbstractSpreadsheet
     {
         // private access dictionary of strings to Cell "cells" thats initialized to an empty dictionary
         // (good thing i left that comment so you could understand my code)
@@ -74,9 +74,11 @@ namespace SS
         /// <returns></returns>
         public override ISet<string> SetCellContents(string name, Formula formula)
         {
+            Cell cell = new(name, formula);
+            if (IsRecursive(cell)) throw new ArgumentException();
             // set the cell to be a new Cell of a Formula
             // and then set the dependees to be the variables from said new formula
-            graph.ReplaceDependees(name, (cells[name] = new(formula)).formula.GetVariables());
+            graph.ReplaceDependents(name, (cells[name] = cell).formula.GetVariables());
             // the line below literally kills osama bin laden. no lie
             return RecursiveDeps(name);
         }
@@ -98,27 +100,47 @@ namespace SS
         /// <returns>
         /// inda description homie
         /// </returns>
-        private ISet<string> RecursiveDeps(string name)
-        {
-            HashSet<string> recursiveDeps = [];
+        private HashSet<string> RecursiveDeps(string name) => AllDeps(GetDirectDependents(name));
 
+        /// <summary>
+        /// All dependencies at all depths for a formula
+        /// </summary>
+        /// <param name="topLevelDependencies">
+        /// the dependencies to check dependencies for
+        /// </param>
+        /// <returns>
+        /// inda description homie
+        /// </returns>
+        private HashSet<string> AllDeps(IEnumerable<string> topLevelDependencies)
+        {
             //we dont support using the callstack as a data queue in our household
-            Queue<string> dependees = new(graph.GetDependees(name));
-            foreach (string d in dependees)
-            {
-                recursiveDeps.Add(d);//tha next level babyyyyy!
-                foreach (var dd in graph.GetDependees(d)) dependees.Enqueue(dd); //level order traversal
-            }
+            Queue<string> dependees = new(topLevelDependencies);
+            HashSet<string> recursiveDeps = [];
+            //level order traversal. if you are confused maybe read a book?
+            while (dependees.TryDequeue(out string? d)) if(recursiveDeps.Add(d)) foreach (var dd in GetDirectDependents(d)) dependees.Enqueue(dd);
             return recursiveDeps;
         }
+
+        /// <summary>
+        /// Determine if a cell is a valid addition (non-recursive)
+        /// </summary>
+        /// <param name="cell">
+        /// Cell we are deciding if we can add
+        /// </param>
+        /// <returns>
+        /// inda description homie
+        /// </returns>
+        private bool IsRecursive(Cell cell) => AllDeps(cell.formula.GetVariables()).Contains(cell.ID);
+
+
 
         /// <summary>
         /// For storing a specific cell with an id and formula
         /// IDEK know why I need this. the instructions say I need it
         /// </summary>
-        private struct Cell(Formula f)
+        private struct Cell(string name, Formula f)
         {
-            public string ID;
+            public string ID = name;
             public Formula formula = f;
         }
     }
