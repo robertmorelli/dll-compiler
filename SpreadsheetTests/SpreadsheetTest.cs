@@ -14,9 +14,9 @@
 /// File Contents:
 /// My tests for my implementation of AbstractSpreadsheet
 /// </summary>
+using SS;
 
-
-namespace SpreadsheetTests
+namespace DevelopmentTests
 {
     [TestClass]
     public class SpreadsheetTest
@@ -24,6 +24,7 @@ namespace SpreadsheetTests
         [TestMethod]
         public void SetCellAndRetreive()
         {
+            new SS.Spreadsheet();
         }
     }
 }
