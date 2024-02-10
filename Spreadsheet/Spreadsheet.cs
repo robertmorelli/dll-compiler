@@ -15,6 +15,7 @@
 /// My implementation of AbstractSpreadsheet
 /// </summary>
 
+
 using SpreadsheetUtilities;
 using System;
 using System.Collections.Generic;
@@ -26,61 +27,58 @@ namespace SS
 {
     internal class Spreadsheet : AbstractSpreadsheet
     {
+        // private access dictionary of strings to Cell "cells" thats initialized to an empty dictionary
+        // (good thing i left that comment so you could understand my code)
+        private readonly Dictionary<string, Cell> cells = [];
+        private readonly DependencyGraph graph = new();
+
         /// <inheritdoc/>
         /// <summary>
         /// 
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public override object GetCellContents(string name)
-        {
-            throw new NotImplementedException();
-        }
+        public override object GetCellContents(string name) => cells[name].formula;
 
         /// <inheritdoc/>
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <returns></returns>
-        public override IEnumerable<string> GetNamesOfAllNonemptyCells()
-        {
-            throw new NotImplementedException();
-        }
+        public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.AsEnumerable();
 
         /// <inheritdoc/>
         /// <summary>
-        /// 
+        /// This one cals the string one
         /// </summary>
         /// <param name="name"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, double number)
-        {
-            throw new NotImplementedException();
-        }
+        public override ISet<string> SetCellContents(string name, double number) => SetCellContents(name, number.ToString());
 
         /// <inheritdoc/>
         /// <summary>
-        /// 
+        /// This one calls the formula one
         /// </summary>
         /// <param name="name"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, string text)
-        {
-            throw new NotImplementedException();
-        }
+        public override ISet<string> SetCellContents(string name, string text) => SetCellContents(name, new Formula(text));
 
         /// <inheritdoc/>
         /// <summary>
-        /// 
+        /// This one actually does stuff
         /// </summary>
         /// <param name="name"></param>
         /// <param name="formula"></param>
         /// <returns></returns>
         public override ISet<string> SetCellContents(string name, Formula formula)
         {
-            throw new NotImplementedException();
+            // set the cell to be a new Cell of a Formula
+            // and then set the dependees to be the variables from said new formula
+            graph.ReplaceDependees(name, (cells[name] = new(formula)).formula.GetVariables());
+            // the line below literally kills osama bin laden. no lie
+            return RecursiveDeps(name);
         }
 
         /// <inheritdoc/>
@@ -89,14 +87,39 @@ namespace SS
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        protected override IEnumerable<string> GetDirectDependents(string name)
+        protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependents(name);
+
+        /// <summary>
+        /// All dependencies at all deps
+        /// </summary>
+        /// <param name="name">
+        /// The var name to get deps
+        /// </param>
+        /// <returns>
+        /// inda description homie
+        /// </returns>
+        private ISet<string> RecursiveDeps(string name)
         {
-            throw new NotImplementedException();
+            HashSet<string> recursiveDeps = [];
+
+            //we dont support using the callstack as a data queue in our household
+            Queue<string> dependees = new(graph.GetDependees(name));
+            foreach (string d in dependees)
+            {
+                recursiveDeps.Add(d);//tha next level babyyyyy!
+                foreach (var dd in graph.GetDependees(d)) dependees.Enqueue(dd); //level order traversal
+            }
+            return recursiveDeps;
         }
 
-        private struct Cell {
+        /// <summary>
+        /// For storing a specific cell with an id and formula
+        /// IDEK know why I need this. the instructions say I need it
+        /// </summary>
+        private struct Cell(Formula f)
+        {
             public string ID;
-            public Formula formula;
+            public Formula formula = f;
         }
     }
 }
