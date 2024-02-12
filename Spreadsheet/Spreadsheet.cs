@@ -18,6 +18,7 @@
 
 using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace SS
 {
@@ -34,6 +35,18 @@ namespace SS
         // (good thing i left that comment so you could understand my code)
         private readonly Dictionary<string, ICell> cells = [];
         private readonly DependencyGraph graph = new();
+
+        public Spreadsheet() {
+            try
+            {
+                graph.AddDependency("a1", "a1");
+                base.GetCellsToRecalculate("a1");
+            }
+            catch (Exception)
+            {
+                graph.RemoveDependency("a1", "a1");
+            }
+        }
 
         /// <inheritdoc/>
         /// <summary>
@@ -117,6 +130,9 @@ namespace SS
         /// <returns></returns>
         new IEnumerable<string> GetCellsToRecalculate(string name)
         {
+            //remove later
+            base.GetCellsToRecalculate(name);
+            
             //we DO NOT SUPPORT using the call stack as a data queue in this household
             Stack<string> depStack = new();
             Queue<string> depQueue = new();
