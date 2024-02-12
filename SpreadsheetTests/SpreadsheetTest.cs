@@ -35,6 +35,10 @@ namespace SpreadsheetTests
             }
         }
 
+        /// <summary>
+        /// still not fully convinced of the correctness of the given version of
+        /// the recalculation function but ya know this is probably good enough
+        /// </summary>
         [TestMethod]
         public void ComplexDependencyTreeForOrderGaurentees()
         {
@@ -50,19 +54,26 @@ namespace SpreadsheetTests
             Assert.AreEqual(3.0, sheet.GetCellContents("e1"));
         }
 
+
+        /// <summary>
+        /// from docs just making sure everything works as intended
+        /// </summary>
         [TestMethod]
-        public void TestMethod0()
+        public void MakeSureEveryDeps()
         {
             Spreadsheet sheet = new();
-            sheet.SetCellContents("A1", "3");
+            sheet.SetCellContents("D1", "C1 - B1");
             sheet.SetCellContents("B1", "A1 * A1");
             sheet.SetCellContents("C1", "B1 + A1");
-            sheet.SetCellContents("D1", "C1 - B1");
-
+            Assert.AreEqual(true, sheet.SetCellContents("A1", "3").ToHashSet().SetEquals(["D1","C1","B1","A1"]));
+            Assert.AreEqual(3.0, sheet.GetCellContents("D1"));
         }
 
+        /// <summary>
+        /// short chain check recalc
+        /// </summary>
         [TestMethod]
-        public void TestMethod1()
+        public void ShortChain()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a4", "a3");
@@ -73,8 +84,12 @@ namespace SpreadsheetTests
             Assert.AreEqual(1.0, sheet.GetCellContents("a4"));
         }
 
+        /// <summary>
+        /// simple circle
+        /// </summary>
+        /// <exception cref="ArgumentException"></exception>
         [TestMethod, ExpectedException(typeof(CircularException))]
-        public void TestMethod2()
+        public void SimpleTriangle()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "a2");
@@ -83,8 +98,11 @@ namespace SpreadsheetTests
             throw new ArgumentException("");
         }
 
+        /// <summary>
+        /// hook loop is circular
+        /// </summary>
         [TestMethod, ExpectedException(typeof(CircularException))]
-        public void TestMethod2and()
+        public void HookLoop()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "a2");
@@ -93,58 +111,78 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a2", "a3");
         }
 
+        /// <summary>
+        /// direct self dependency
+        /// </summary>
         [TestMethod, ExpectedException(typeof(CircularException))]
-        public void TestMethod2and2()
+        public void SelfDep()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "a1");
         }
 
-
-
+        //TODO: make sure this is CORRECT
+        /// <summary>
+        /// make sure the formula exceptions pass through
+        /// </summary>
         [TestMethod, ExpectedException(typeof(FormulaFormatException))]
-        public void TestMethod3()
+        public void FormatExceptionPassThrough()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "+a2");
             sheet.GetCellContents("a1");
         }
 
+        /// <summary>
+        /// invalid name again
+        /// </summary>
         [TestMethod, ExpectedException(typeof(InvalidNameException))]
-        public void TestMethod4()
+        public void InvalidNameGet()
         {
             Spreadsheet sheet = new();
             sheet.GetCellContents("--a1");
         }
 
+        /// <summary>
+        /// invalid name in set
+        /// </summary>
         [TestMethod, ExpectedException(typeof(InvalidNameException))]
-        public void TestMethod5()
+        public void InvalidNameSet()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("--a1", "a2");
         }
 
+        /// <summary>
+        /// empty cell gives empty string
+        /// </summary>
         [TestMethod]
         public void TestMethod6()
         {
             Spreadsheet sheet = new();
-            sheet.GetCellContents("a1");
+            Assert.AreEqual("",sheet.GetCellContents("a1"));
         }
 
+        /// <summary>
+        /// formula errror for dependency not being calculatable
+        /// </summary>
         [TestMethod]
-        public void TestMethod7()
+        public void FormulaErrorDepNotREal()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "a2");
             Assert.AreEqual(typeof(FormulaError), sheet.GetCellContents("a1").GetType());
         }
 
-
+        /// <summary>
+        /// empty string does not cause storage
+        /// </summary>
         [TestMethod]
-        public void TestMethod8()
+        public void emptyStringDontEnterValues()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "");
+            Assert.AreEqual(0,sheet.GetNamesOfAllNonemptyCells().Count());
         }
     }
 }
