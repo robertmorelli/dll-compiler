@@ -19,4 +19,4 @@ The Spreadsheet program is currently capable of making a dependency graph and op
     1. Assignment One:   Predicted Hours:          4        Actual Hours:   8
     2. Assignment Two:   Predicted Hours:          8        Actual Hours:   2
     3. Assignment Three: Predicted Hours:          20       Actual Hours:   27
-    4. Assignment Four:  Predicted Hours:          10       Actual Hours:   --
+    4. Assignment Four:  Predicted Hours:          10       Actual Hours:   14

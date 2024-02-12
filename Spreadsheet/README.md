@@ -29,4 +29,4 @@ Stack<string> GetCellsToRecalculate(string name)
 ```
 
 # Time Expenditure:
-    - Assignment Four: Predicted Hours:          5       Actual Hours:   --
+    - Assignment Four: Predicted Hours:          5       Actual Hours:   7

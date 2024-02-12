@@ -14,4 +14,4 @@ Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in 
 None
 
 # Time Expenditure:
-    - Assignment Four: Predicted Hours:          5       Actual Hours:   --
+    - Assignment Four: Predicted Hours:          5       Actual Hours:   7
