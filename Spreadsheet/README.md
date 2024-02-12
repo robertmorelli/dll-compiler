@@ -11,7 +11,22 @@ Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in 
 ```
 
 # Comments to Evaluators:
-None
+If you want to implement this recursively do this (doesn't check circularity tho)
+```
+Stack<string> GetCellsToRecalculate(string name)
+{
+    Stack<string> changed = new();
+    HashSet<string> visited = [name];
+    void Visit(string toVisit)
+    {
+        foreach (string n in GetDirectDependents(toVisit))
+            if (visited.Add(n)) Visit(n);
+        changed.Push(toVisit);
+    }
+    Visit(name);
+    return changed;
+}
+```
 
 # Time Expenditure:
     - Assignment Four: Predicted Hours:          5       Actual Hours:   --
