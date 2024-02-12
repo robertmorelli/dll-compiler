@@ -24,6 +24,7 @@ namespace SpreadsheetTests
     {
         /// <summary>
         /// this was used for benchmarking search algorithms
+        /// change limit to 10k and expect to wait upwards of half an hour
         /// </summary>
         [TestMethod]
         public void BenchmarkLongChains()
