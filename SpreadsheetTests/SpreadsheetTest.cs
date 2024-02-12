@@ -22,6 +22,45 @@ namespace SpreadsheetTests
     [TestClass]
     public class SpreadsheetTest
     {
+        /// <summary>
+        /// this was used for benchmarking search algorithms
+        /// </summary>
+        [TestMethod]
+        public void BenchmarkLongChains()
+        {
+            Spreadsheet sheet = new();
+            for (int i = 0; i<50; i++)
+            {
+                sheet.SetCellContents("a"+i, "a" + (i + 1));
+            }
+        }
+
+        [TestMethod]
+        public void ComplexDependencyTreeForOrderGaurentees()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("c1", "b1");
+            sheet.SetCellContents("b1", "a1 + g1");
+            sheet.SetCellContents("e1", "d1 + c1");
+            sheet.SetCellContents("c1", "b1");
+            sheet.SetCellContents("d1", "a1");
+            sheet.SetCellContents("g1", "d1");
+
+            sheet.SetCellContents("a1", "1");
+            Assert.AreEqual(3.0, sheet.GetCellContents("e1"));
+        }
+
+        [TestMethod]
+        public void TestMethod0()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("A1", "3");
+            sheet.SetCellContents("B1", "A1 * A1");
+            sheet.SetCellContents("C1", "B1 + A1");
+            sheet.SetCellContents("D1", "C1 - B1");
+
+        }
+
         [TestMethod]
         public void TestMethod1()
         {
@@ -30,8 +69,8 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a3", "a2");
             sheet.SetCellContents("a2", "a1");
             sheet.SetCellContents("a1", 1);
-            Console.WriteLine(sheet.GetNamesOfAllNonemptyCells().Count());
-            Console.WriteLine(sheet.GetCellContents("a4"));
+            Assert.AreEqual(4,sheet.GetNamesOfAllNonemptyCells().Count());
+            Assert.AreEqual(1.0, sheet.GetCellContents("a4"));
         }
 
         [TestMethod, ExpectedException(typeof(CircularException))]
@@ -41,10 +80,28 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a1", "a2");
             sheet.SetCellContents("a2", "a3");
             sheet.SetCellContents("a3", "a1");
+            throw new ArgumentException("");
+        }
+
+        [TestMethod, ExpectedException(typeof(CircularException))]
+        public void TestMethod2and()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", "a2");
+            sheet.SetCellContents("a3", "a4");
+            sheet.SetCellContents("a4", "a2");
+            sheet.SetCellContents("a2", "a3");
+        }
+
+        [TestMethod, ExpectedException(typeof(CircularException))]
+        public void TestMethod2and2()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", "a1");
         }
 
 
-        
+
         [TestMethod, ExpectedException(typeof(FormulaFormatException))]
         public void TestMethod3()
         {
@@ -52,7 +109,7 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a1", "+a2");
             sheet.GetCellContents("a1");
         }
-        
+
         [TestMethod, ExpectedException(typeof(InvalidNameException))]
         public void TestMethod4()
         {
@@ -79,7 +136,7 @@ namespace SpreadsheetTests
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "a2");
-            Assert.AreEqual(typeof(FormulaError),sheet.GetCellContents("a1").GetType());
+            Assert.AreEqual(typeof(FormulaError), sheet.GetCellContents("a1").GetType());
         }
 
 

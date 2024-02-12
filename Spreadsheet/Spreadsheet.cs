@@ -13,19 +13,10 @@
 ///
 /// File Contents:
 /// My implementation of AbstractSpreadsheet
-/// I am not using the POS tier aweful GetCellsToRecalculate and Visit methods
-/// These are aweful implementations. see the readme for why I hate them.
 /// </summary>
 
 
 using SpreadsheetUtilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
-using System.Xml.Linq;
 using System.Text.RegularExpressions;
 
 namespace SS
@@ -53,7 +44,7 @@ namespace SS
         public override object GetCellContents(string name)
         {
             if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
-            return cells.TryGetValue(name, out ICell? value) ? value.Value() : "";
+            return cells.TryGetValue(name, out ICell? value) ? value.CurrentValue : "";
         }
 
         /// <inheritdoc/>
@@ -96,22 +87,49 @@ namespace SS
         {
             if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
             ICell cell = new FormulaCell(name, formula, this);
-
             //we dont support using the callstack as a data queue in our household
-            Queue<string> dependees = new(cell.Dependencies);
+            Queue<string> dependents = new(cell.Dependencies);
             HashSet<string> recursiveDeps = [];
             //level order traversal. if you are confused maybe read a book?
-            while (dependees.TryDequeue(out string? d))//question mark gets promoted away in this line so dont worry
+            while (dependents.TryDequeue(out string? d))//question mark gets promoted away in this line so dont worry
                 if (recursiveDeps.Add(d))//if its already in there skip the children
-                    if (recursiveDeps.Contains(cell.ID)) throw new CircularException();//throws circular before add
-                    else foreach (var dd in GetDirectDependents(d))
-                            dependees.Enqueue(dd);//so that the descendents will be processed
-
+                    foreach (var dd in graph.GetDependents(d))
+                        if (dd.Equals(name)) throw new CircularException();//throws circular before add
+                        else dependents.Enqueue(dd);//so that the descendents will be processed
             // set the cell to be a new Cell of a Formula
             // and then set the dependees to be the variables from said new formula
             graph.ReplaceDependents(name, (cells[name] = cell).Dependencies);
-            // the line below literally kills osama bin laden. no lie
-            return recursiveDeps;
+
+            //recalculate Necessary
+            var cellsToRecalculate = GetCellsToRecalculate(name);
+            foreach (var toRecalculate in cellsToRecalculate) cells[toRecalculate].Recalculate();
+            return cellsToRecalculate.ToHashSet();
+        }
+
+        /// <summary>
+        /// just like the one it overrides
+        /// in testing 60-100% faster than refernce code and get substantially worse with
+        /// larger chains (chains in excess of 5k result in over 200% performance increase)
+        /// cannot be made lazy due to full traversal required before
+        /// order is determined
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        new IEnumerable<string> GetCellsToRecalculate(string name)
+        {
+            //we DO NOT SUPPORT using the call stack as a data queue in this household
+            Stack<string> depStack = new();
+            Queue<string> depQueue = new();
+            //in queue d is replaced by its dependencies. most dependent at top of stack
+            //then we remove duplicates (from lower on stack)
+            //then we reverse the stack so the lest dependent comes first
+            string? dep = name;
+            do
+            {
+                foreach (var depOfDep in GetDirectDependents(dep)) depQueue.Enqueue(depOfDep);
+                depStack.Push(dep);
+            } while (depQueue.TryDequeue(out dep));
+            return depStack.Distinct().Reverse();
         }
 
         /// <inheritdoc/>
@@ -120,7 +138,7 @@ namespace SS
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependents(name);
+        protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
 
         /// <summary>
         /// For storing a specific cell with an id and formula
@@ -130,35 +148,82 @@ namespace SS
         {
             public string ID { get; }
             public ISet<string> Dependencies { get; }
-            public object Value();
+            public void Recalculate();
+            public object CurrentValue { get; }
         }
 
-        /// <summary>
-        /// formula version of a cell
-        /// this is so i can add more stuff later
-        /// </summary>
-        /// <param name="n">for the id</param>
-        /// <param name="f">for the formula</param>
-        /// <param name="s">need a spreadsheet reference for var lookup</param>
-        private readonly struct FormulaCell(string n, Formula f, Spreadsheet s) : ICell
-        {
-            private readonly Formula formula = f;
-            private readonly Spreadsheet spreadsheet = s;
-            private readonly string name = n;
 
-            string ICell.ID { get => name; }
-            ISet<string> ICell.Dependencies { get => formula.GetVariables().ToHashSet(); }
-            object ICell.Value()
+        private struct FormulaCell : ICell
+        {
+            //obvious why formula is here
+            private readonly Formula formula;
+            //needs spreedsheet reference to fetch cells
+            private readonly Spreadsheet spreadsheet;
+
+            //for implementation hiding for the above interface
+            private readonly string name;
+            private readonly HashSet<string> FirstOrderDeps;
+            private object CachedValue = new FormulaError("Never Calculated");
+
+            /// <summary>
+            /// formula version of a cell
+            /// this is so i can add more stuff later
+            /// </summary>
+            /// <param name="n">for the id</param>
+            /// <param name="f">for the formula</param>
+            /// <param name="s">need a spreadsheet reference for var lookup</param>
+            /// <exception cref="CircularException">
+            /// if a top level reference refers directly to the name
+            /// </exception>
+            public FormulaCell(string n, Formula f, Spreadsheet s)
             {
-                Dictionary<string, double> validVars = [];
-                foreach (string dep in formula.GetVariables())
-                {
-                    var val = spreadsheet.GetCellContents(dep);
-                    if (val.GetType() == typeof(double)) validVars[dep] = (double)val;
-                    else return new FormulaError();
-                }
-                return formula.Evaluate((s) => (double)validVars[s]);
+                formula = f;
+                spreadsheet = s;
+                name = n;
+
+                FirstOrderDeps = formula.GetVariables().ToHashSet();
+                if (FirstOrderDeps.Contains(n)) throw new CircularException();
+                Recalculate();
             }
+
+            // not sure why i hid this implementation but it is what it is
+            string ICell.ID { get => name; }
+
+            // hides the implementation of dependency fetching
+            // this may allow for more cell types in the future
+            ISet<string> ICell.Dependencies { get => FirstOrderDeps; }
+
+            // hides the implementation of cached values
+            readonly object ICell.CurrentValue { get => CachedValue; }
+
+            /// <summary>
+            /// inherited methods cannot be called from the constructor so
+            /// this is the separation of internal and external recalculate
+            /// </summary>
+            void ICell.Recalculate() => Recalculate();
+
+            /// <summary>
+            /// lookup var value for its cached value
+            /// </summary>
+            /// <param name="s">the var name to lookup</param>
+            /// <returns></returns>
+            private readonly object Lookup(string s) => spreadsheet.cells[s].CurrentValue;
+
+            /// <summary>
+            /// lookup and assume safety
+            /// could be improved to attempt force chain refresh
+            /// </summary>
+            /// <param name="s"></param>
+            /// <returns></returns>
+            private readonly double LookupUnsafe(string s) => (double)Lookup(s);
+
+            /// <summary>
+            /// use the lookup functions above to recalculate the current value of the cell
+            /// this should be called only when its dependencies change
+            /// or
+            /// when its initialized in case it is a const expression
+            /// </summary>
+            void Recalculate() { CachedValue = formula.Evaluate(LookupUnsafe); }
         }
     }
 }
