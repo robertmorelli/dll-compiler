@@ -24,7 +24,7 @@ namespace SS
 {
     internal partial class Utility
     {
-        [GeneratedRegex(@"^[_a-zA-Z][_a-zA-Z0-9]+$", options:
+        [GeneratedRegex(@"^[_a-zA-Z][_a-zA-Z0-9]*$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
         public static partial Regex validName();
@@ -36,7 +36,8 @@ namespace SS
         private readonly Dictionary<string, ICell> cells = [];
         private readonly DependencyGraph graph = new();
 
-        public Spreadsheet() {
+        public Spreadsheet()
+        {
             try
             {
                 graph.AddDependency("a1", "a1");
@@ -74,7 +75,7 @@ namespace SS
         /// <param name="name"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, double number) => SetCellContents(name, new Formula(number.ToString()));
+        public override ISet<string> SetCellContents(string name, double number) => SetCellContents(name, number.ToString());
 
         /// <inheritdoc/>
         /// <summary>
@@ -86,20 +87,8 @@ namespace SS
         public override ISet<string> SetCellContents(string name, string text)
         {
             if ((text = text.Trim()).Equals("")) return new HashSet<string>();
-            return SetCellContents(name, new Formula(text));
-        }
-
-        /// <inheritdoc/>
-        /// <summary>
-        /// This one actually does stuff
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="formula"></param>
-        /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, Formula formula)
-        {
             if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
-            ICell cell = new FormulaCell(name, formula, this);
+            ICell cell = new FormulaCell(name, text, this);
             //we dont support using the callstack as a data queue in our household
             Queue<string> dependents = new(cell.Dependencies);
             HashSet<string> recursiveDeps = [];
@@ -119,6 +108,15 @@ namespace SS
             return cellsToRecalculate.ToHashSet();
         }
 
+        /// <inheritdoc/>
+        /// <summary>
+        /// This one actually does stuff
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="formula"></param>
+        /// <returns></returns>
+        public override ISet<string> SetCellContents(string name, Formula formula) => SetCellContents(name, formula.ToString());
+
         /// <summary>
         /// just like the one it overrides
         /// in testing 60-100% faster than refernce code and get substantially worse with
@@ -132,7 +130,7 @@ namespace SS
         {
             //remove later
             base.GetCellsToRecalculate(name);
-            
+
             //we DO NOT SUPPORT using the call stack as a data queue in this household
             Stack<string> depStack = new();
             Queue<string> depQueue = new();
@@ -162,7 +160,6 @@ namespace SS
         /// </summary>
         private interface ICell
         {
-            public string ID { get; }
             public ISet<string> Dependencies { get; }
             public void Recalculate();
             public object CurrentValue { get; }
@@ -172,7 +169,7 @@ namespace SS
         private struct FormulaCell : ICell
         {
             //obvious why formula is here
-            private readonly Formula formula;
+            private readonly Formula? formula;
             //needs spreedsheet reference to fetch cells
             private readonly Spreadsheet spreadsheet;
 
@@ -191,19 +188,23 @@ namespace SS
             /// <exception cref="CircularException">
             /// if a top level reference refers directly to the name
             /// </exception>
-            public FormulaCell(string n, Formula f, Spreadsheet s)
+            public FormulaCell(string n, string f, Spreadsheet s)
             {
-                formula = f;
                 spreadsheet = s;
                 name = n;
-
-                FirstOrderDeps = formula.GetVariables().ToHashSet();
-                if (FirstOrderDeps.Contains(n)) throw new CircularException();
-                Recalculate();
+                try
+                {
+                    formula = new Formula(f);
+                    FirstOrderDeps = formula.GetVariables().ToHashSet();
+                    if (FirstOrderDeps.Contains(n)) throw new CircularException();
+                    Recalculate();
+                }
+                catch (FormulaFormatException e)
+                {
+                    CachedValue = new FormulaError(e.Message);
+                    FirstOrderDeps = [];
+                }
             }
-
-            // not sure why i hid this implementation but it is what it is
-            string ICell.ID { get => name; }
 
             // hides the implementation of dependency fetching
             // this may allow for more cell types in the future
@@ -239,7 +240,14 @@ namespace SS
             /// or
             /// when its initialized in case it is a const expression
             /// </summary>
-            void Recalculate() { CachedValue = formula.Evaluate(LookupUnsafe); }
+            void Recalculate()
+            {
+                CachedValue = formula?.Evaluate(LookupUnsafe) ?? CachedValue;
+                //no need to do other work.
+                //if this isnt a valid formula
+                //this cannot depend on any formula and therefore
+                //cannot be called
+            }
         }
     }
 }

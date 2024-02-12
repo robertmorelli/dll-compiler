@@ -121,16 +121,29 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a1", "a1");
         }
 
-        //TODO: make sure this is CORRECT
+
         /// <summary>
         /// make sure the formula exceptions pass through
         /// </summary>
-        [TestMethod, ExpectedException(typeof(FormulaFormatException))]
+        [TestMethod]
         public void FormatExceptionPassThrough()
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "+a2");
-            sheet.GetCellContents("a1");
+            Assert.AreEqual(typeof(FormulaError),sheet.GetCellContents("a1").GetType());
+        }
+
+        /// <summary>
+        /// make sure the formula exceptions pass through
+        /// </summary>
+        [TestMethod]
+        public void DependsOnFormulaFormat()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", "+a3");
+            sheet.SetCellContents("a2", "a1");
+            Assert.AreEqual(typeof(FormulaError), sheet.GetCellContents("a2").GetType());
+
         }
 
         /// <summary>
@@ -183,6 +196,17 @@ namespace SpreadsheetTests
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "");
             Assert.AreEqual(0,sheet.GetNamesOfAllNonemptyCells().Count());
+        }
+
+        /// <summary>
+        /// set to const for formula check
+        /// </summary>
+        [TestMethod]
+        public void checkFormulaVersion()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", new Formula("(5+10)/5"));
+            Assert.AreEqual(3.0, sheet.GetCellContents("a1"));
         }
     }
 }
