@@ -23,8 +23,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.Metrics;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -405,7 +407,7 @@ namespace SpreadsheetUtilities
             }
 
             //does a preorder traversal lisp-y string for debugging "k" indicates calculated constant vals
-            /*public readonly string ToString(Func<string, double>? lo = null, int depth = 0)
+            public readonly string ToString2(Func<string, double>? lo = null, int depth = 0)
             {
                 lo ??= (_) => 1;
                 return
@@ -413,10 +415,22 @@ namespace SpreadsheetUtilities
                     (LeftChild != null ? "(" : "") +
                     primary.primativeString.ToString() +
                     (HasConstValue ? " K" + (LeftChild != null ? " :" + constValue : "") : "") +
-                    LeftChild?.ToString(lo, depth + 1) +
-                    RightChild?.ToString(lo, depth + 1) +
+                    LeftChild?.ToString2(lo, depth + 1) +
+                    RightChild?.ToString2(lo, depth + 1) +
                     (LeftChild != null ? ("\n" + new string(' ', depth * 4) + ")") : "");
-            }*/
+            }
+
+            public readonly string ToString(Func<string, double>? lo = null)
+            {
+                lo ??= (_) => 1;
+                return
+                    (LeftChild != null ? "(" : "") +
+                    LeftChild?.ToString(lo) +
+                    primary.primativeString.ToString() +
+                    RightChild?.ToString(lo) +
+                    (LeftChild != null ? ")" : "");// +
+                    //(LeftChild != null ? (HasConstValue ? "=" + constValue : "") : "");
+            }
 
             //who said there were no pointers in "safe" c#?
             internal class ReferenceLMAO(TokenNode? tn) { public TokenNode? tn = tn; }
@@ -736,4 +750,28 @@ namespace SpreadsheetUtilities
         /// </summary>
         public string Reason { get; private set; }
     }
+
+    //tree index builder
+    /*
+    internal struct IB(uint s = 0) {
+        public uint state = s;
+        public static readonly IB Left = new((uint)D.Left);
+        public static readonly IB Right = new((uint)D.Right);
+        internal enum D { Left = 0, Right = 1 }
+        public static IB operator +(IB one, IB two) => new((one.state << two.Length) | two.state);
+        public static IB operator +(IB one, D two) => new((one.state << 1) | (uint)two);
+        public static IB operator --(IB one) => new(one.state >> 1);
+        public uint Length{ get => 32 - (uint)BitOperations.LeadingZeroCount(state); }
+    }
+
+    internal struct ContTree<T> where T : struct
+    {
+        List<T?> list;
+        public T Get(uint index) => Get(new IB(index));
+        public T Get(IB index) { throw new NotImplementedException(); }
+
+        public T Set(uint index) => Set(new IB(index));
+        public T Set(IB index) { throw new NotImplementedException(); }
+
+    }*/
 }

@@ -16,7 +16,9 @@
 ///     the evaluator.
 /// </summary>
 using FormulaEvaluator;
+using SpreadsheetTests;
 using SpreadsheetUtilities;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using static FormulaEvaluator.Evaluator;
 using static SpreadsheetUtilities.Utility;
@@ -33,6 +35,42 @@ namespace FormulaEvaluatorTester
         /// <param name="_">ignore</param>
         static void Main(string[] _)
         {
+
+
+            // Create an instance of the test class
+            var testClassInstance = Activator.CreateInstance(typeof(SpreadsheetTest));
+
+            // Get methods from the test class
+            var methods = typeof(SpreadsheetTest).GetMethods();
+
+            foreach (var method in methods)
+            {
+                Console.WriteLine("started a test: " + method.Name);
+                try
+                {
+                    method.Invoke(testClassInstance, null);
+                } catch { } finally { Console.WriteLine("did a test"); }
+            }
+
+            // Create an instance of the test class
+            testClassInstance = Activator.CreateInstance(typeof(SpreadsheetTest2));
+
+            // Get methods from the test class
+            methods = typeof(SpreadsheetTest2).GetMethods();
+
+            foreach (var method in methods)
+            {
+                Console.WriteLine("started a test: " + method.Name);
+                try
+                {
+                    method.Invoke(testClassInstance, null);
+                } catch { }
+                finally { Console.WriteLine("did a test"); }
+            }
+
+
+
+
             Dictionary<string, int> lookupDict = new Dictionary<string, int>();
             Lookup lu = (string s) => lookupDict.GetValueOrDefault(s, 0);
             Random random = new Random();

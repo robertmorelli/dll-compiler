@@ -19,6 +19,7 @@
 using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SS
 {
@@ -38,7 +39,7 @@ namespace SS
 
         public Spreadsheet()
         {
-            try
+            /*try
             {
                 graph.AddDependency("a1", "a1");
                 base.GetCellsToRecalculate("a1");
@@ -46,7 +47,7 @@ namespace SS
             catch (Exception)
             {
                 graph.RemoveDependency("a1", "a1");
-            }
+            }*/
         }
 
         /// <inheritdoc/>
@@ -75,7 +76,12 @@ namespace SS
         /// <param name="name"></param>
         /// <param name="number"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, double number) => SetCellContents(name, number.ToString());
+        public override ISet<string> SetCellContents(string name, double number)
+        {
+            if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
+            cells[name] = new DoubleCell(number);
+            return GetRecursiveDeps(name).ToHashSet();
+        }
 
         /// <inheritdoc/>
         /// <summary>
@@ -84,28 +90,42 @@ namespace SS
         /// <param name="name"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, string text)
+        public override ISet<string> SetCellContents(string name, Formula formula)
         {
-            if ((text = text.Trim()).Equals("")) return new HashSet<string>();
             if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
-            ICell cell = new FormulaCell(name, text, this);
-            //we dont support using the callstack as a data queue in our household
-            Queue<string> dependents = new(cell.Dependencies);
-            HashSet<string> recursiveDeps = [];
-            //level order traversal. if you are confused maybe read a book?
-            while (dependents.TryDequeue(out string? d))//question mark gets promoted away in this line so dont worry
-                if (recursiveDeps.Add(d))//if its already in there skip the children
-                    foreach (var dd in graph.GetDependents(d))
-                        if (dd.Equals(name)) throw new CircularException();//throws circular before add
-                        else dependents.Enqueue(dd);//so that the descendents will be processed
-            // set the cell to be a new Cell of a Formula
-            // and then set the dependees to be the variables from said new formula
-            graph.ReplaceDependents(name, (cells[name] = cell).Dependencies);
+            var formVars = formula.GetVariables();
 
-            //recalculate Necessary
-            var cellsToRecalculate = GetCellsToRecalculate(name);
-            foreach (var toRecalculate in cellsToRecalculate) cells[toRecalculate].Recalculate();
-            return cellsToRecalculate.ToHashSet();
+            //throw circulars
+            if (formVars.Contains(name)) throw new CircularException();
+
+
+            Queue<string> dependents = new(graph.GetDependees(name));
+            HashSet<string> recursiveDeps = [];
+
+            while (dependents.TryDequeue(out string? d))
+            {
+                if (d.Equals(name))
+                {
+                    throw new CircularException();
+                }
+                if (recursiveDeps.Add(d))
+                {
+                    foreach (var dd in graph.GetDependees(d))
+                    {
+                        dependents.Enqueue(dd);
+                    }
+                }
+            }
+
+
+
+            graph.ReplaceDependents(name, formVars);
+            cells[name] = new FormulaCell(name, formula, this);
+            foreach (var toRecalculate in recursiveDeps)
+                if(cells.TryGetValue(toRecalculate, out ICell? cell))
+                    cell.MarkDirty();
+            recursiveDeps.Add(name);
+            return recursiveDeps;
         }
 
         /// <inheritdoc/>
@@ -115,7 +135,13 @@ namespace SS
         /// <param name="name"></param>
         /// <param name="formula"></param>
         /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, Formula formula) => SetCellContents(name, formula.ToString());
+        public override ISet<string> SetCellContents(string name, string text)
+        {
+            if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
+            if ((text = text.Trim()).Equals("")) return new HashSet<string>();
+            cells[name] = new StringCell(text);
+            return GetRecursiveDeps(name).ToHashSet();
+        }
 
         /// <summary>
         /// just like the one it overrides
@@ -123,15 +149,29 @@ namespace SS
         /// larger chains (chains in excess of 5k result in over 200% performance increase)
         /// cannot be made lazy due to full traversal required before
         /// order is determined
+        /// 
+        /// order does not need to be set as such when using lazy cell recalculation
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        new IEnumerable<string> GetCellsToRecalculate(string name)
+        new Stack<string> GetCellsToRecalculate(string name)
         {
-            //remove later
-            base.GetCellsToRecalculate(name);
+            var changed = new Stack<string>();
+            var visited = new HashSet<string>() { name };
+            void ProcDep(string dep)
+            {
+                foreach (string n in GetDirectDependents(dep))
+                    if (n.Equals(name)) throw new CircularException();
+                    else if (visited.Add(n)) ProcDep(n);
+                changed.Push(dep);
+            }
+            ProcDep(name);
+            return changed;
+        }
 
-            //we DO NOT SUPPORT using the call stack as a data queue in this household
+        Stack<string> GetRecursiveDeps(string name)
+        {
+            // we DO NOT SUPPORT using the call stack as a data queue in this household
             Stack<string> depStack = new();
             Queue<string> depQueue = new();
             //in queue d is replaced by its dependencies. most dependent at top of stack
@@ -143,8 +183,9 @@ namespace SS
                 foreach (var depOfDep in GetDirectDependents(dep)) depQueue.Enqueue(depOfDep);
                 depStack.Push(dep);
             } while (depQueue.TryDequeue(out dep));
-            return depStack.Distinct().Reverse();
+            return depStack;
         }
+
 
         /// <inheritdoc/>
         /// <summary>
@@ -160,16 +201,33 @@ namespace SS
         /// </summary>
         private interface ICell
         {
-            public ISet<string> Dependencies { get; }
-            public void Recalculate();
             public object CurrentValue { get; }
+            public void MarkDirty();
+        }
+
+        private readonly struct DoubleCell(double v) : ICell
+        {
+            private readonly double value = v;
+            public readonly object CurrentValue => value;
+            public readonly void MarkDirty() { }
+            public readonly void Recalculate() { }
+        }
+
+        private readonly struct StringCell(string s) : ICell
+        {
+            private readonly string value = s;
+            public readonly object CurrentValue => value;
+            public readonly void MarkDirty() { }
+            public readonly void Recalculate() { }
         }
 
 
         private struct FormulaCell : ICell
         {
+            private bool dirty = true;
+            void ICell.MarkDirty() { dirty = true; }
             //obvious why formula is here
-            private readonly Formula? formula;
+            private readonly Formula formula;
             //needs spreedsheet reference to fetch cells
             private readonly Spreadsheet spreadsheet;
 
@@ -188,16 +246,14 @@ namespace SS
             /// <exception cref="CircularException">
             /// if a top level reference refers directly to the name
             /// </exception>
-            public FormulaCell(string n, string f, Spreadsheet s)
+            public FormulaCell(string n, Formula f, Spreadsheet s)
             {
                 spreadsheet = s;
                 name = n;
+                formula = f;
                 try
                 {
-                    formula = new Formula(f);
                     FirstOrderDeps = formula.GetVariables().ToHashSet();
-                    if (FirstOrderDeps.Contains(n)) throw new CircularException();
-                    Recalculate();
                 }
                 catch (FormulaFormatException e)
                 {
@@ -206,18 +262,8 @@ namespace SS
                 }
             }
 
-            // hides the implementation of dependency fetching
-            // this may allow for more cell types in the future
-            ISet<string> ICell.Dependencies { get => FirstOrderDeps; }
-
             // hides the implementation of cached values
-            readonly object ICell.CurrentValue { get => CachedValue; }
-
-            /// <summary>
-            /// inherited methods cannot be called from the constructor so
-            /// this is the separation of internal and external recalculate
-            /// </summary>
-            void ICell.Recalculate() => Recalculate();
+            object ICell.CurrentValue { get => Compute(); }
 
             /// <summary>
             /// lookup var value for its cached value
@@ -240,13 +286,17 @@ namespace SS
             /// or
             /// when its initialized in case it is a const expression
             /// </summary>
-            void Recalculate()
+            object Compute()
             {
-                CachedValue = formula?.Evaluate(LookupUnsafe) ?? CachedValue;
                 //no need to do other work.
                 //if this isnt a valid formula
                 //this cannot depend on any formula and therefore
                 //cannot be called
+                if (CachedValue != null && dirty == false) return (double)CachedValue;
+                CachedValue = formula.Evaluate(LookupUnsafe);
+                dirty = false;
+                if (CachedValue != null) return (double)CachedValue;
+                return new FormulaError();
             }
         }
     }
