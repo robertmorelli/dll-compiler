@@ -96,34 +96,29 @@ namespace SS
             var formVars = formula.GetVariables();
 
             //throw circulars
-            if (formVars.Contains(name)) throw new CircularException();
+            //if (formVars.Contains(name)) throw new CircularException();
 
 
-            Queue<string> dependents = new(graph.GetDependees(name));
+            Queue<string> dependees = new(graph.GetDependees(name));
             HashSet<string> recursiveDeps = [];
 
-            while (dependents.TryDequeue(out string? d))
-            {
-                if (d.Equals(name))
-                {
-                    throw new CircularException();
-                }
+            while (dependees.TryDequeue(out string? d))
                 if (recursiveDeps.Add(d))
-                {
                     foreach (var dd in graph.GetDependees(d))
-                    {
-                        dependents.Enqueue(dd);
-                    }
-                }
-            }
+                        dependees.Enqueue(dd);
+            if(formVars.ToHashSet().Intersect(recursiveDeps).Count() > 0)
+                throw new CircularException();
 
 
 
             graph.ReplaceDependents(name, formVars);
             cells[name] = new FormulaCell(name, formula, this);
             foreach (var toRecalculate in recursiveDeps)
+            {
+                Console.WriteLine(toRecalculate);
                 if(cells.TryGetValue(toRecalculate, out ICell? cell))
                     cell.MarkDirty();
+            }
             recursiveDeps.Add(name);
             return recursiveDeps;
         }
@@ -201,24 +196,23 @@ namespace SS
         /// </summary>
         private interface ICell
         {
+            public object Value;
             public object CurrentValue { get; }
             public void MarkDirty();
         }
 
         private readonly struct DoubleCell(double v) : ICell
         {
-            private readonly double value = v;
+            public readonly object value = v;
             public readonly object CurrentValue => value;
             public readonly void MarkDirty() { }
-            public readonly void Recalculate() { }
         }
 
         private readonly struct StringCell(string s) : ICell
         {
-            private readonly string value = s;
+            public readonly object value = s;
             public readonly object CurrentValue => value;
             public readonly void MarkDirty() { }
-            public readonly void Recalculate() { }
         }
 
 
@@ -234,7 +228,7 @@ namespace SS
             //for implementation hiding for the above interface
             private readonly string name;
             private readonly HashSet<string> FirstOrderDeps;
-            private object CachedValue = new FormulaError("Never Calculated");
+            private object CachedValue;
 
             /// <summary>
             /// formula version of a cell
@@ -248,18 +242,11 @@ namespace SS
             /// </exception>
             public FormulaCell(string n, Formula f, Spreadsheet s)
             {
+                CachedValue = new FormulaError("Never Calculated Struct: " + n);
                 spreadsheet = s;
                 name = n;
                 formula = f;
-                try
-                {
-                    FirstOrderDeps = formula.GetVariables().ToHashSet();
-                }
-                catch (FormulaFormatException e)
-                {
-                    CachedValue = new FormulaError(e.Message);
-                    FirstOrderDeps = [];
-                }
+                FirstOrderDeps = formula.GetVariables().ToHashSet();
             }
 
             // hides the implementation of cached values
@@ -270,7 +257,16 @@ namespace SS
             /// </summary>
             /// <param name="s">the var name to lookup</param>
             /// <returns></returns>
-            private readonly object Lookup(string s) => spreadsheet.cells[s].CurrentValue;
+            private readonly object Lookup(string s)
+            {
+                object result = spreadsheet.cells[s].CurrentValue;
+                if (result.GetType() == typeof(double)) return result;
+                else if (result.GetType() == typeof(FormulaError)){
+                    //Console.WriteLine("failed to get " + s + " : " + ((FormulaError)result).Reason);
+                    return new FormulaError("Failed to look up [" + s + "] " + ((FormulaError)result).Reason);
+                }
+                else return result;
+            }
 
             /// <summary>
             /// lookup and assume safety
@@ -292,11 +288,12 @@ namespace SS
                 //if this isnt a valid formula
                 //this cannot depend on any formula and therefore
                 //cannot be called
-                if (CachedValue != null && dirty == false) return (double)CachedValue;
-                CachedValue = formula.Evaluate(LookupUnsafe);
+                return formula.Evaluate(LookupUnsafe);
+                //CachedValue = ;
+                if (CachedValue != null && dirty == false) return CachedValue;
                 dirty = false;
-                if (CachedValue != null) return (double)CachedValue;
-                return new FormulaError();
+                if (CachedValue != null) return CachedValue;
+                return new FormulaError("compute error");
             }
         }
     }

@@ -51,7 +51,7 @@ namespace SpreadsheetTests
             sheet.SetCellContents("d1", new Formula("a1"));
             sheet.SetCellContents("g1", new Formula("d1"));
 
-            sheet.SetCellContents("a1", "1");
+            sheet.SetCellContents("a1", 1);
             Assert.AreEqual(3.0, sheet.GetCellContents("e1"));
         }
 
@@ -96,7 +96,6 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a1", new Formula("a2"));
             sheet.SetCellContents("a2", new Formula("a3"));
             sheet.SetCellContents("a3", new Formula("a1"));
-            throw new ArgumentException("");
         }
 
         /// <summary>

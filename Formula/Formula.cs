@@ -199,9 +199,9 @@ namespace SpreadsheetUtilities
         /// </summary>
         public object Evaluate(Func<string, double> lookup)
         {
-            if (throwDivByZero) return new FormulaError(dbz);
+            if (throwDivByZero) return new FormulaError(dbz + "for string: " + ToString());
             try { return ExecutableAst.Value(lookup); }
-            catch (Exception e) { return new FormulaError(e.Message); }
+            catch (Exception e) { return new FormulaError(ToString() + " : " + e.Message); }
         }
 
         /// <summary>
