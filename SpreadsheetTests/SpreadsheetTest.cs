@@ -30,9 +30,11 @@ namespace SpreadsheetTests
         public void BenchmarkLongChains()
         {
             Spreadsheet sheet = new();
-            for (int i = 0; i<50; i++)
+            for (int i = 0; i < 70; i++)
             {
-                sheet.SetCellContents("a"+i, new Formula("a" + (i + 1)));
+                sheet.SetCellContents("a" + i, 1);
+                sheet.GetCellContents("a0");
+                sheet.SetCellContents("a" + i, new Formula("a" + (i + 1)));
             }
         }
 
@@ -52,7 +54,7 @@ namespace SpreadsheetTests
             sheet.SetCellContents("g1", new Formula("d1"));
 
             sheet.SetCellContents("a1", 1);
-            Assert.AreEqual(3.0, sheet.GetCellContents("e1"));
+            Assert.AreEqual(new Formula("d1 + c1"), sheet.GetCellContents("e1"));
         }
 
 
@@ -66,8 +68,8 @@ namespace SpreadsheetTests
             sheet.SetCellContents("D1", new Formula("C1 - B1"));
             sheet.SetCellContents("B1", new Formula("A1 * A1"));
             sheet.SetCellContents("C1", new Formula("B1 + A1"));
-            Assert.AreEqual(true, sheet.SetCellContents("A1", 3).ToHashSet().SetEquals(["D1","C1","B1","A1"]));
-            Assert.AreEqual(3.0, sheet.GetCellContents("D1"));
+            Assert.AreEqual(true, sheet.SetCellContents("A1", 3).ToHashSet().SetEquals(["D1", "C1", "B1", "A1"]));
+            Assert.AreEqual(new Formula("C1 - B1"), sheet.GetCellContents("D1"));
         }
 
         /// <summary>
@@ -81,7 +83,7 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a3", new Formula("a2"));
             sheet.SetCellContents("a2", new Formula("a1"));
             sheet.SetCellContents("a1", 1);
-            Assert.AreEqual(4,sheet.GetNamesOfAllNonemptyCells().Count());
+            Assert.AreEqual(4, sheet.GetNamesOfAllNonemptyCells().Count());
             Assert.AreEqual(1.0, sheet.GetCellContents("a4"));
         }
 
@@ -121,31 +123,6 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a1", new Formula("a1"));
         }
 
-
-        /// <summary>
-        /// make sure the formula exceptions pass through
-        /// </summary>
-        [TestMethod]
-        public void FormatExceptionPassThrough()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", new Formula("+a2"));
-            Assert.AreEqual(typeof(FormulaError),sheet.GetCellContents("a1").GetType());
-        }
-
-        /// <summary>
-        /// make sure the formula exceptions pass through
-        /// </summary>
-        [TestMethod]
-        public void DependsOnFormulaFormat()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", new Formula("+a3"));
-            sheet.SetCellContents("a2", new Formula("a1"));
-            Assert.AreEqual(typeof(FormulaError), sheet.GetCellContents("a2").GetType());
-
-        }
-
         /// <summary>
         /// invalid name again
         /// </summary>
@@ -173,7 +150,7 @@ namespace SpreadsheetTests
         public void TestMethod6()
         {
             Spreadsheet sheet = new();
-            Assert.AreEqual("",sheet.GetCellContents("a1"));
+            Assert.AreEqual("", sheet.GetCellContents("a1"));
         }
 
         /// <summary>
@@ -195,18 +172,7 @@ namespace SpreadsheetTests
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", "");
-            Assert.AreEqual(0,sheet.GetNamesOfAllNonemptyCells().Count());
-        }
-
-        /// <summary>
-        /// set to const for formula check
-        /// </summary>
-        [TestMethod]
-        public void checkFormulaVersion()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", new Formula("(5+10)/5"));
-            Assert.AreEqual(3.0, sheet.GetCellContents("a1"));
+            Assert.AreEqual(0, sheet.GetNamesOfAllNonemptyCells().Count());
         }
     }
 
@@ -609,11 +575,6 @@ namespace SpreadsheetTests
 
 
 
-
-
-
-
-
         [TestMethod(), Timeout(2000)]
         [TestCategory("43")]
         public void TestStress4()
@@ -630,8 +591,8 @@ namespace SpreadsheetTests
                 firstCells.AddFirst("A1" + i);
                 lastCells.AddFirst("A1" + (i + 250));
             }
-            Assert.IsTrue(s.SetCellContents("A1249", 25.0).SequenceEqual(firstCells.Reverse().ToList()));
-            //Assert.IsTrue(s.SetCellContents("A1499", 0).SequenceEqual(lastCells));
+            Assert.IsTrue(s.SetCellContents("A1249", 25.0).SetEquals(firstCells));
+            Assert.IsTrue(s.SetCellContents("A1499", 0).SetEquals(lastCells));
         }
 
 
