@@ -40,7 +40,7 @@ namespace SpreadsheetUtilities
         const string rpPattern = @"\)";
         const string opPattern = @"[\+\-*/]";
         const string varPattern = @"[a-zA-Z_](?: [a-zA-Z_]|\d)*";
-        const string doublePattern = @"(?: \d+?\.\d*? | \d*?\.\d+? | \d+? ) (?: [eE][\+-]?\d+?)?";
+        const string doublePattern = @"(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: [eE][\+-]?\d+)?";
         const string spacePattern = @"\s+?";
         // Overall pattern
         const string tokenPattern = @"("

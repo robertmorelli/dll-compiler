@@ -10,7 +10,9 @@ namespace SS
             RegexOptions.NonBacktracking)]
         private static partial Regex _validName();
         private static readonly Regex validName = _validName();
-        public static bool IsValidName(string s) => validName.IsMatch(s);
+        public static bool IsInvalidName(string s) => !validName.IsMatch(s);
+
+
         [GeneratedRegex(@"^$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
@@ -25,12 +27,17 @@ namespace SS
         protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
         HashSet<string> GetRecursiveDeps(string name)
         {
-            Queue<string> dependees = new(graph.GetDependees(name));
             HashSet<string> recursiveDeps = [];
-            while (dependees.TryDequeue(out string? d))
-                if (recursiveDeps.Add(d))
-                    foreach (var dd in graph.GetDependees(d))
-                        dependees.Enqueue(dd);
+            {
+                Queue<string> dependees = new();
+                string? dep = name;
+                do
+                {
+                    if (recursiveDeps.Add(dep))
+                        foreach (string depOfDep in graph.GetDependees(dep))
+                            dependees.Enqueue(depOfDep);
+                } while (dependees.TryDequeue(out dep));
+            }
             return recursiveDeps;
         }
 
@@ -84,39 +91,53 @@ namespace SS
 
             object Compute()
             {
-                if (CachedValue != null && dirty == false) return CachedValue;
-                else return CachedValue = value.Evaluate(LookupUnsafe);
+                if (CachedValue != null)
+                    if (dirty == false)
+                        return CachedValue;
+                dirty = false;
+                return CachedValue = value.Evaluate(LookupUnsafe);
             }
         }
 
         public override object GetCellContents(string name)
         {
-            if (!Utility.IsValidName(name)) throw new InvalidNameException();
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             return cells.TryGetValue(name, out ICell? value) ? value.Value : "";
+        }
+
+        public override ISet<string> SetCellContents(string name, string text)
+        {
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            graph.ReplaceDependents(name, []);
+            if (Utility.IsNothing(text)) return new HashSet<string>();
+            cells[name] = new StringCell(text);
+            return GetRecursiveDeps(name);
         }
 
         public override ISet<string> SetCellContents(string name, double number)
         {
-            if (!Utility.IsValidName(name)) throw new InvalidNameException();
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            graph.ReplaceDependents(name, []);
             cells[name] = new DoubleCell(number);
             return GetRecursiveDeps(name);
         }
 
         public override ISet<string> SetCellContents(string name, Formula formula)
         {
-            if (!Utility.IsValidName(name)) throw new InvalidNameException();
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             HashSet<string> recursiveDeps = [];
             {
                 Queue<string> dependees = new(graph.GetDependees(name));
-                while (dependees.TryDequeue(out string? d))
-                    if (recursiveDeps.Add(d))
-                        foreach (var dd in graph.GetDependees(d))
-                            dependees.Enqueue(dd);
+                while (dependees.TryDequeue(out string? dep))
+                    if (recursiveDeps.Add(dep))
+                        foreach (var depOfDep in graph.GetDependees(dep))
+                            dependees.Enqueue(depOfDep);
             }
 
             {
                 var formVars = formula.GetVariables();
-                if (recursiveDeps.Intersect(formVars).Any()) throw new CircularException();
+                if (formVars.Contains(name) || recursiveDeps.Intersect(formVars).Any())
+                    throw new CircularException();
                 graph.ReplaceDependents(name, formVars);
             }
 
@@ -127,14 +148,6 @@ namespace SS
 
             recursiveDeps.Add(name);
             return recursiveDeps;
-        }
-
-        public override ISet<string> SetCellContents(string name, string text)
-        {
-            if (!Utility.IsValidName(name)) throw new InvalidNameException();
-            if (Utility.IsNothing(text)) return new HashSet<string>();
-            cells[name] = new StringCell(text);
-            return GetRecursiveDeps(name);
         }
     }
 }

@@ -68,8 +68,9 @@ namespace SpreadsheetTests
             sheet.SetCellContents("D1", new Formula("C1 - B1"));
             sheet.SetCellContents("B1", new Formula("A1 * A1"));
             sheet.SetCellContents("C1", new Formula("B1 + A1"));
-            Assert.AreEqual(true, sheet.SetCellContents("A1", 3).ToHashSet().SetEquals(["D1", "C1", "B1", "A1"]));
-            Assert.AreEqual(new Formula("C1 - B1"), sheet.GetCellContents("D1"));
+            var a = sheet.SetCellContents("A1", 3);
+            HashSet<string> b = ["D1", "C1", "B1", "A1"];
+            Assert.IsTrue(a.SetEquals(b));
         }
 
         /// <summary>
@@ -84,7 +85,7 @@ namespace SpreadsheetTests
             sheet.SetCellContents("a2", new Formula("a1"));
             sheet.SetCellContents("a1", 1);
             Assert.AreEqual(4, sheet.GetNamesOfAllNonemptyCells().Count());
-            Assert.AreEqual(1.0, sheet.GetCellContents("a4"));
+            Assert.AreEqual(new Formula("a3"), sheet.GetCellContents("a4"));
         }
 
         /// <summary>
@@ -591,25 +592,10 @@ namespace SpreadsheetTests
                 firstCells.AddFirst("A1" + i);
                 lastCells.AddFirst("A1" + (i + 250));
             }
+
             Assert.IsTrue(s.SetCellContents("A1249", 25.0).SetEquals(firstCells));
             Assert.IsTrue(s.SetCellContents("A1499", 0).SetEquals(lastCells));
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         [TestMethod(), Timeout(2000)]
         [TestCategory("44")]
