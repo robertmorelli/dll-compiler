@@ -20,14 +20,6 @@
 /// I did ask the prof and he said I was allowed to do this
 /// </summary>
 
-
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Numerics;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SpreadsheetUtilities
@@ -259,7 +251,7 @@ namespace SpreadsheetUtilities
         /// new Formula("x1+y2").Equals(new Formula("y2+x1")) is false
         /// new Formula("2.0 + x7").Equals(new Formula("2.000 + x7")) is true
         /// </summary>
-        public override bool Equals(object? obj) => 
+        public override bool Equals(object? obj) =>
             obj != null &&
             (obj.GetType() == typeof(Formula)) &&
             GetHashCode() == obj.GetHashCode();
@@ -320,20 +312,21 @@ namespace SpreadsheetUtilities
                 _leftRef = new(left);
                 _rightRef = new(right);
                 constValue = primary.isImm ? double.Parse(primary.primativeString) : double.NaN;
-                if (LeftChild != null && RightChild != null)
-                {
-                    var realLeft = (TokenNode)LeftChild;
-                    var realRight = (TokenNode)RightChild;
-                    //NaN o K = NaN unless NaN * 0 in some cases does accidental optimizations to remove vars
-                    constValue = primary.primativeString switch
+                if (LeftChild != null)
+                    if (RightChild != null)
                     {
-                        "*" => realLeft.constValue * realRight.constValue,
-                        "/" => realLeft.constValue / realRight.constValue,
-                        "+" => realLeft.constValue + realRight.constValue,
-                        "-" => realLeft.constValue - realRight.constValue,
-                        _ => double.NaN
-                    };
-                }
+                        var realLeft = (TokenNode)LeftChild;
+                        var realRight = (TokenNode)RightChild;
+                        //NaN o K = NaN unless NaN * 0 in some cases does accidental optimizations to remove vars
+                        constValue = primary.primativeString switch
+                        {
+                            "*" => realLeft.constValue * realRight.constValue,
+                            "/" => realLeft.constValue / realRight.constValue,
+                            "+" => realLeft.constValue + realRight.constValue,
+                            "-" => realLeft.constValue - realRight.constValue,
+                            _ => double.NaN
+                        };
+                    }
             }
 
             //optimizes AST tree and returns best version this code can produce
@@ -429,7 +422,7 @@ namespace SpreadsheetUtilities
                     primary.primativeString.ToString() +
                     RightChild?.ToString(lo) +
                     (LeftChild != null ? ")" : "");// +
-                    //(LeftChild != null ? (HasConstValue ? "=" + constValue : "") : "");
+                                                   //(LeftChild != null ? (HasConstValue ? "=" + constValue : "") : "");
             }
 
             //who said there were no pointers in "safe" c#?

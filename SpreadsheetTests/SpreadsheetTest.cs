@@ -22,6 +22,17 @@ namespace SpreadsheetTests
     [TestClass]
     public class SpreadsheetTest
     {
+        [TestMethod]
+        public void AAAShowOrder()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetCellContents("a1", new Formula("b1"));
+            sheet.SetCellContents("b1", new Formula("c1"));
+            sheet.SetCellContents("c1", 3.0);
+            Console.WriteLine(sheet.GetCellValue("a1"));
+        }
+
+
         /// <summary>
         /// this was used for benchmarking search algorithms
         /// change limit to 10k and expect to wait upwards of half an hour
@@ -162,7 +173,8 @@ namespace SpreadsheetTests
         {
             Spreadsheet sheet = new();
             sheet.SetCellContents("a1", new Formula("a2"));
-            Assert.AreEqual(typeof(FormulaError), sheet.GetCellContents("a1").GetType());
+            var a = sheet.GetCellContents("a1");
+            Assert.AreEqual(typeof(FormulaError), a.GetType());
         }
 
         /// <summary>
@@ -568,13 +580,6 @@ namespace SpreadsheetTests
         {
             TestStress3();
         }
-
-
-
-
-
-
-
 
         [TestMethod(), Timeout(2000)]
         [TestCategory("43")]

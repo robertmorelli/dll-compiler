@@ -1,4 +1,5 @@
 ﻿using SpreadsheetUtilities;
+using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 
 namespace SS
@@ -46,64 +47,109 @@ namespace SS
         private interface ICell
         {
             public object Value { get; }
-            public object CurrentValue { get; }
-            public void MarkDirty();
+            public object Contents { get; }
+            public void Compute();
         }
 
-        private readonly struct DoubleCell(double v) : ICell
+        private readonly struct DoubleCell(double d) : ICell
         {
-            public object Value { get => value; }
-            public readonly object CurrentValue => value;
-            public readonly void MarkDirty() { }
+            public readonly object Value => value;
+            public readonly object Contents => value;
+            public void Compute() { }
 
-            private readonly double value = v;
+            private readonly double value = d;
         }
 
         private readonly struct StringCell(string s) : ICell
         {
-            public object Value { get => value; }
-            public readonly object CurrentValue => value;
-            public readonly void MarkDirty() { }
+            public readonly object Value => value;
+            public readonly object Contents => value;
+            public void Compute() { }
 
             private readonly string value = s;
         }
 
         private struct FormulaCell(Formula f, Spreadsheet s) : ICell
         {
-            private readonly Formula value = f;
-            public object Value { get => Compute().GetType() == typeof(FormulaError) ? CachedValue : value; }
-            public object CurrentValue => Compute();
-            public void MarkDirty() { dirty = true; }
-
-            private bool dirty = true;
+            private readonly Formula _content = f;
             private readonly Spreadsheet spreadsheet = s;
-            private object CachedValue = new FormulaError("Never Calculated Struct");
-
-            private readonly double LookupUnsafe(string s) => (double)Lookup(s);
-            private readonly object Lookup(string s)
+            public readonly object Contents => _content;
+            public readonly object Value => _currentValue;
+            private object _currentValue = new FormulaError("Never Calculated Struct");
+            public void Compute()
             {
-                object result = spreadsheet.cells[s].CurrentValue;
-                if (result.GetType() == typeof(double)) return result;
-                else if (result.GetType() == typeof(FormulaError))
-                    return new FormulaError("Failed to look up [" + s + "] " + ((FormulaError)result).Reason);
-                else return result;
-            }
-
-            object Compute()
-            {
-                if (CachedValue != null)
-                    if (dirty == false)
-                        return CachedValue;
-                dirty = false;
-                return CachedValue = value.Evaluate(LookupUnsafe);
+                Dictionary<string, double> lookup = [];
+                double Lookup(string s) => lookup[s];
+                foreach (string dep in _content.GetVariables())
+                {
+                    if (spreadsheet.cells.TryGetValue(dep, out ICell? cell))
+                    {
+                        var val = cell.Value;
+                        if (val.GetType() == typeof(double))
+                        {
+                            lookup[dep] = (double)val;
+                        }
+                        else
+                        {
+                            _currentValue = new FormulaError("Dependency Not Valid");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        _currentValue = new FormulaError("Dependency Not Available");
+                        return;
+                    }
+                }
+                _currentValue = _content.Evaluate(Lookup);
             }
         }
 
         public override object GetCellContents(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            return cells.TryGetValue(name, out ICell? value) ? value.Value : "";
+            return cells.TryGetValue(name, out ICell? value) ? value.Contents : "";
         }
+
+        public object GetCellValue(string name)
+        {
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            return cells.TryGetValue(name, out ICell? cell) ? cell.Value : "";
+        }
+
+        private void RecompInOrder(string name)
+        {
+            HashSet<string> visited = [];
+            Stack<string> changed = new();
+            Stack<string> toDo = new();
+            string? n = name;
+            do
+                if (visited.Add(n))
+                {
+                    changed.Push(n);
+                    foreach (string dep in graph.GetDependees(n))
+                        if (dep.Equals(name)) throw new CircularException();
+                        else changed.Push(dep);
+                }
+                else toDo.Push(n);
+            while (changed.TryPop(out n));
+            while (toDo.TryPop(out n))
+                if (cells.TryGetValue(n, out ICell? cell))
+                    cell.Compute();
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         public override ISet<string> SetCellContents(string name, string text)
         {
@@ -111,6 +157,7 @@ namespace SS
             graph.ReplaceDependents(name, []);
             if (Utility.IsNothing(text)) return new HashSet<string>();
             cells[name] = new StringCell(text);
+            RecompInOrder(name);
             return GetRecursiveDeps(name);
         }
 
@@ -119,6 +166,7 @@ namespace SS
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             graph.ReplaceDependents(name, []);
             cells[name] = new DoubleCell(number);
+            RecompInOrder(name);
             return GetRecursiveDeps(name);
         }
 
@@ -142,10 +190,7 @@ namespace SS
             }
 
             cells[name] = new FormulaCell(formula, this);
-            foreach (var toRecalculate in recursiveDeps)
-                if (cells.TryGetValue(toRecalculate, out ICell? cell))
-                    cell.MarkDirty();
-
+            RecompInOrder(name);
             recursiveDeps.Add(name);
             return recursiveDeps;
         }
