@@ -1,12 +1,12 @@
 ﻿using SpreadsheetUtilities;
-using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
+using System.Xml;
 
 namespace SS
 {
     internal partial class Utility
     {
-        [GeneratedRegex(@"^[_a-zA-Z][_a-zA-Z0-9]*$", options:
+        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9]*$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
         private static partial Regex _validName();
@@ -24,34 +24,17 @@ namespace SS
 
     public class Spreadsheet : AbstractSpreadsheet
     {
-        private readonly DependencyGraph graph = new();
+        protected readonly DependencyGraph graph = new();
         protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
-        HashSet<string> GetRecursiveDeps(string name)
-        {
-            HashSet<string> recursiveDeps = [];
-            {
-                Queue<string> dependees = new();
-                string? dep = name;
-                do
-                {
-                    if (recursiveDeps.Add(dep))
-                        foreach (string depOfDep in graph.GetDependees(dep))
-                            dependees.Enqueue(depOfDep);
-                } while (dependees.TryDequeue(out dep));
-            }
-            return recursiveDeps;
-        }
-
-        private readonly Dictionary<string, ICell> cells = [];
-        public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.AsEnumerable();
-        private interface ICell
+        protected readonly Dictionary<string, ICell> cells = [];
+        protected interface ICell
         {
             public object Value { get; }
             public object Contents { get; }
             public void Compute();
         }
 
-        private readonly struct DoubleCell(double d) : ICell
+        protected readonly struct DoubleCell(double d) : ICell
         {
             public readonly object Value => value;
             public readonly object Contents => value;
@@ -60,7 +43,7 @@ namespace SS
             private readonly double value = d;
         }
 
-        private readonly struct StringCell(string s) : ICell
+        protected readonly struct StringCell(string s) : ICell
         {
             public readonly object Value => value;
             public readonly object Contents => value;
@@ -69,7 +52,7 @@ namespace SS
             private readonly string value = s;
         }
 
-        private struct FormulaCell(Formula f, Spreadsheet s) : ICell
+        protected struct FormulaCell(Formula f, Spreadsheet s) : ICell
         {
             private readonly Formula _content = f;
             private readonly Spreadsheet spreadsheet = s;
@@ -105,94 +88,163 @@ namespace SS
             }
         }
 
-        public override object GetCellContents(string name)
+        //emulate recursive stack frame
+        //firsthalf is a proxy for the return pointer
+        //(which is either at the start of the function of halfway through)
+        //name is a string stack variable
+        protected struct IRecompStackFrame { public string name; public bool firstHalf; };
+
+        /// <summary>
+        /// virtual stack implementation of the base.GetCellsToRecalculate
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="start">start cell</param>
+        /// <returns></returns>
+        /// <exception cref="CircularException">if the dependencies are circular</exception>
+        new protected Stack<string> GetCellsToRecalculate(string start)
         {
-            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            return cells.TryGetValue(name, out ICell? value) ? value.Contents : "";
+            try
+            {
+                base.GetCellsToRecalculate(name);
+            }
+            catch { }
+            // c# does not support tail call optimizations
+            Stack<IRecompStackFrame> virtualCallStack = new();
+
+            //same as original
+            HashSet<string> visited = [];
+            //obligatory "linked list bad" comment (because linked lists are BAD!)
+            Stack<string> changed = new();
+
+            //"Call" Visit(start...)
+            IRecompStackFrame frame = new() { name = start, firstHalf = true };
+            do
+            {
+                if (frame.firstHalf)//ret pops either &Visit or &Visit + K
+                {
+                    visited.Add(frame.name);
+                    frame.firstHalf = false;
+                    virtualCallStack.Push(frame);
+                    //to exactly copy behavior this must itterate in reverse
+                    foreach (string n in GetDirectDependents(frame.name))
+                    {
+                        if (n.Equals(start))
+                        {
+                            throw new CircularException();
+                        }
+                        else if (!visited.Contains(n))
+                        {
+                            //"Call" Visit(n...)
+                            virtualCallStack.Push(new() { name = n, firstHalf = true });
+                        }
+                    }
+                }
+                else
+                {
+                    changed.Push(frame.name);
+                }
+            } while (virtualCallStack.TryPop(out frame));
+            return changed;
         }
 
-        public object GetCellValue(string name)
+
+        protected override IList<string> SetCellContents(string name, string text)
+        {
+            if (Utility.IsNothing(text)) return [];
+            graph.ReplaceDependents(name, []);
+            var toDo = GetCellsToRecalculate(name);
+            cells[name] = new StringCell(text);
+            return [.. toDo];
+        }
+
+        protected override IList<string> SetCellContents(string name, double number)
+        {
+            graph.ReplaceDependents(name, []);
+            var toDo = GetCellsToRecalculate(name);
+            cells[name] = new DoubleCell(number);
+            return [.. toDo];
+        }
+
+        protected override IList<string> SetCellContents(string name, Formula formula)
+        {
+            if (formula.GetVariables().Contains(name)) throw new CircularException();
+            var toDo = GetCellsToRecalculate(name);//can throw circular
+            cells[name] = new FormulaCell(formula, this);
+            graph.ReplaceDependents(name, toDo);
+            return [.. toDo];
+        }
+
+        public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version) : base(isValid, normalize, version)
+        {
+        }
+
+        public override bool Changed {
+            get => throw new NotImplementedException();
+            protected set => throw new NotImplementedException();
+        }
+
+        public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.AsEnumerable();
+
+
+        public override string GetSavedVersion(string filename)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Save(string filename)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override string GetXML()
+        {
+            StringWriter stringWriter = new();
+            using XmlWriter xmlWriter = XmlWriter.Create(stringWriter);
+            DoXMLWriting(xmlWriter);
+            return stringWriter.ToString();
+        }
+
+        protected void DoXMLWriting(XmlWriter xmlWriter)
+        {
+            xmlWriter.WriteStartDocument();//<xml ...
+            xmlWriter.WriteStartElement("spreadsheet");//<spreadsheet>
+            foreach (var (name, cell) in cells)
+            {
+                xmlWriter.WriteStartElement("cell");//<cell>
+                xmlWriter.WriteStartElement("name");//<name>
+                xmlWriter.WriteValue(name);//[name]
+                xmlWriter.WriteEndElement();//</name>
+                xmlWriter.WriteStartElement("contents");//contents>
+                xmlWriter.WriteValue(cell.Contents);//[contents]
+                xmlWriter.WriteEndElement();//</contents>
+                xmlWriter.WriteEndElement();//</cell>
+            }
+            xmlWriter.WriteEndElement();//</spreadsheet>
+            xmlWriter.WriteEndDocument();
+        }
+
+        public override object GetCellValue(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             return cells.TryGetValue(name, out ICell? cell) ? cell.Value : "";
         }
 
-        private void RecompInOrder(string name)
+        public override object GetCellContents(string name)
         {
-            HashSet<string> visited = [];
-            Stack<string> changed = new();
-            Stack<string> toDo = new();
-            string? n = name;
-            do
-                if (visited.Add(n))
-                {
-                    changed.Push(n);
-                    foreach (string dep in graph.GetDependees(n))
-                        if (dep.Equals(name)) throw new CircularException();
-                        else changed.Push(dep);
-                }
-                else toDo.Push(n);
-            while (changed.TryPop(out n));
-            while (toDo.TryPop(out n))
+
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            return cells.TryGetValue(name, out ICell? value) ? value.Contents : "";
+        }
+
+
+        public override IList<string> SetContentsOfCell(string name, string content)
+        {
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            var deps = SetCellContents(name, new Formula(content));
+            foreach (var n in deps)
                 if (cells.TryGetValue(n, out ICell? cell))
                     cell.Compute();
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        public override ISet<string> SetCellContents(string name, string text)
-        {
-            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            graph.ReplaceDependents(name, []);
-            if (Utility.IsNothing(text)) return new HashSet<string>();
-            cells[name] = new StringCell(text);
-            RecompInOrder(name);
-            return GetRecursiveDeps(name);
-        }
-
-        public override ISet<string> SetCellContents(string name, double number)
-        {
-            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            graph.ReplaceDependents(name, []);
-            cells[name] = new DoubleCell(number);
-            RecompInOrder(name);
-            return GetRecursiveDeps(name);
-        }
-
-        public override ISet<string> SetCellContents(string name, Formula formula)
-        {
-            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            HashSet<string> recursiveDeps = [];
-            {
-                Queue<string> dependees = new(graph.GetDependees(name));
-                while (dependees.TryDequeue(out string? dep))
-                    if (recursiveDeps.Add(dep))
-                        foreach (var depOfDep in graph.GetDependees(dep))
-                            dependees.Enqueue(depOfDep);
-            }
-
-            {
-                var formVars = formula.GetVariables();
-                if (formVars.Contains(name) || recursiveDeps.Intersect(formVars).Any())
-                    throw new CircularException();
-                graph.ReplaceDependents(name, formVars);
-            }
-
-            cells[name] = new FormulaCell(formula, this);
-            RecompInOrder(name);
-            recursiveDeps.Add(name);
-            return recursiveDeps;
+            return deps;
         }
     }
 }

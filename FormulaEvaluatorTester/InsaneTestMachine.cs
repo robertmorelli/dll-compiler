@@ -52,22 +52,6 @@ namespace FormulaEvaluatorTester
                 } catch { } finally { Console.WriteLine("did a test"); }
             }
 
-            // Create an instance of the test class
-            testClassInstance = Activator.CreateInstance(typeof(SpreadsheetTest2));
-
-            // Get methods from the test class
-            methods = typeof(SpreadsheetTest2).GetMethods();
-
-            foreach (var method in methods)
-            {
-                Console.WriteLine("started a test: " + method.Name);
-                try
-                {
-                    method.Invoke(testClassInstance, null);
-                } catch { }
-                finally { Console.WriteLine("did a test"); }
-            }
-
 
 
 
