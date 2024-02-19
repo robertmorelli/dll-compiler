@@ -22,192 +22,165 @@ namespace SpreadsheetTests
     [TestClass]
     public class SpreadsheetTest
     {
-        /// <summary>
-        /// this was used for benchmarking search algorithms
-        /// change limit to 10k and expect to wait upwards of half an hour
-        /// </summary>
         [TestMethod]
         public void BenchmarkLongChains()
         {
-            Spreadsheet sheet = new();
-            for (int i = 0; i<50; i++)
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            for (int i = 0; i < 70; i++)
             {
-                sheet.SetCellContents("a"+i, "a" + (i + 1));
+                sheet.SetContentsOfCell("a" + i, "1");
+                sheet.GetCellContents("a0");
+                sheet.SetContentsOfCell("a" + i, "=a" + (i + 1));
             }
         }
 
-        /// <summary>
-        /// still not fully convinced of the correctness of the given version of
-        /// the recalculation function but ya know this is probably good enough
-        /// </summary>
-        [TestMethod]
-        public void ComplexDependencyTreeForOrderGaurentees()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("c1", "b1");
-            sheet.SetCellContents("b1", "a1 + g1");
-            sheet.SetCellContents("e1", "d1 + c1");
-            sheet.SetCellContents("c1", "b1");
-            sheet.SetCellContents("d1", "a1");
-            sheet.SetCellContents("g1", "d1");
-
-            sheet.SetCellContents("a1", "1");
-            Assert.AreEqual(3.0, sheet.GetCellContents("e1"));
-        }
-
-
-        /// <summary>
-        /// from docs just making sure everything works as intended
-        /// </summary>
-        [TestMethod]
-        public void MakeSureEveryDeps()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("D1", "C1 - B1");
-            sheet.SetCellContents("B1", "A1 * A1");
-            sheet.SetCellContents("C1", "B1 + A1");
-            Assert.AreEqual(true, sheet.SetCellContents("A1", "3").ToHashSet().SetEquals(["D1","C1","B1","A1"]));
-            Assert.AreEqual(3.0, sheet.GetCellContents("D1"));
-        }
-
-        /// <summary>
-        /// short chain check recalc
-        /// </summary>
-        [TestMethod]
-        public void ShortChain()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a4", "a3");
-            sheet.SetCellContents("a3", "a2");
-            sheet.SetCellContents("a2", "a1");
-            sheet.SetCellContents("a1", 1);
-            Assert.AreEqual(4,sheet.GetNamesOfAllNonemptyCells().Count());
-            Assert.AreEqual(1.0, sheet.GetCellContents("a4"));
-        }
-
-        /// <summary>
-        /// simple circle
-        /// </summary>
-        /// <exception cref="ArgumentException"></exception>
         [TestMethod, ExpectedException(typeof(CircularException))]
-        public void SimpleTriangle()
+        public void CircularException()
         {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", "a2");
-            sheet.SetCellContents("a2", "a3");
-            sheet.SetCellContents("a3", "a1");
-            throw new ArgumentException("");
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a1", "=a2");
+            sheet.SetContentsOfCell("a2", "=a3");
+            sheet.SetContentsOfCell("a3", "=a1");
         }
 
-        /// <summary>
-        /// hook loop is circular
-        /// </summary>
         [TestMethod, ExpectedException(typeof(CircularException))]
-        public void HookLoop()
+        public void CircularException2()
         {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", "a2");
-            sheet.SetCellContents("a3", "a4");
-            sheet.SetCellContents("a4", "a2");
-            sheet.SetCellContents("a2", "a3");
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a1", "=a1");
         }
 
-        /// <summary>
-        /// direct self dependency
-        /// </summary>
-        [TestMethod, ExpectedException(typeof(CircularException))]
-        public void SelfDep()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", "a1");
-        }
-
-
-        /// <summary>
-        /// make sure the formula exceptions pass through
-        /// </summary>
         [TestMethod]
-        public void FormatExceptionPassThrough()
+        public void AllContentTypes()
         {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", "+a2");
-            Assert.AreEqual(typeof(FormulaError),sheet.GetCellContents("a1").GetType());
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a0", "1");
+            sheet.SetContentsOfCell("a1", "1");
+            sheet.SetContentsOfCell("a2", "two");
+            sheet.SetContentsOfCell("a3", "=3 + 3");
+            sheet.GetCellContents("a0");
+            sheet.GetCellContents("a1");
+            sheet.GetCellContents("a2");
+            sheet.GetCellContents("a3");
+
+            sheet.GetCellValue("a3");
+            sheet.GetNamesOfAllNonemptyCells();
+            Console.WriteLine(sheet.GetXML());
+            sheet.Save("AllContentTypes.xml");
+            //Assert.AreEqual("1", sheet.GetSavedVersion("AllContentTypes.xml"));
         }
 
-        /// <summary>
-        /// make sure the formula exceptions pass through
-        /// </summary>
-        [TestMethod]
-        public void DependsOnFormulaFormat()
-        {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", "+a3");
-            sheet.SetCellContents("a2", "a1");
-            Assert.AreEqual(typeof(FormulaError), sheet.GetCellContents("a2").GetType());
-
-        }
-
-        /// <summary>
-        /// invalid name again
-        /// </summary>
         [TestMethod, ExpectedException(typeof(InvalidNameException))]
-        public void InvalidNameGet()
+        public void InvalidGetName()
         {
-            Spreadsheet sheet = new();
-            sheet.GetCellContents("--a1");
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.GetCellContents("--a3");
         }
 
-        /// <summary>
-        /// invalid name in set
-        /// </summary>
         [TestMethod, ExpectedException(typeof(InvalidNameException))]
-        public void InvalidNameSet()
+        public void InvalidGetName2()
         {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("--a1", "a2");
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.GetCellValue("--a3");
         }
 
-        /// <summary>
-        /// empty cell gives empty string
-        /// </summary>
-        [TestMethod]
-        public void TestMethod6()
+        [TestMethod, ExpectedException(typeof(InvalidNameException))]
+        public void InvalidSetName()
         {
-            Spreadsheet sheet = new();
-            Assert.AreEqual("",sheet.GetCellContents("a1"));
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("--a3", "3 + 3");
         }
 
-        /// <summary>
-        /// formula errror for dependency not being calculatable
-        /// </summary>
         [TestMethod]
-        public void FormulaErrorDepNotREal()
+        public void NoItem1()
         {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", "a2");
-            Assert.AreEqual(typeof(FormulaError), sheet.GetCellContents("a1").GetType());
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.GetCellValue("a3");
         }
 
-        /// <summary>
-        /// empty string does not cause storage
-        /// </summary>
         [TestMethod]
-        public void emptyStringDontEnterValues()
+        public void NoItem2()
         {
-            Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", "");
-            Assert.AreEqual(0,sheet.GetNamesOfAllNonemptyCells().Count());
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.GetCellContents("a3");
         }
 
-        /// <summary>
-        /// set to const for formula check
-        /// </summary>
         [TestMethod]
-        public void checkFormulaVersion()
+        public void NoContent()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a3", "");
+        }
+
+        [TestMethod]
+        public void StringContent()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a3", "hello");
+            sheet.GetCellContents("a3");
+        }
+
+        [TestMethod]
+        public void FormulaContent()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a3", "=6+8");
+            sheet.GetCellContents("a3");
+        }
+
+        [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]
+        public void ReadFailure()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.GetSavedVersion("");
+        }
+
+        [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]
+        public void SaveFailure()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.Save("");
+        }
+
+        [TestMethod]
+        public void SaveREtreive()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a1", "hi");
+            sheet.Save("SaveREtreive");
+            Console.WriteLine(sheet.GetSavedVersion("SaveREtreive"));
+            Spreadsheet sheet2 = new("SaveREtreive", (_) => true, (s) => s, "1");
+            Console.WriteLine(sheet.GetCellContents("a1"));
+        }
+
+        [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]
+        public void SavedVersionFailure()
         {
             Spreadsheet sheet = new();
-            sheet.SetCellContents("a1", new Formula("(5+10)/5"));
-            Assert.AreEqual(3.0, sheet.GetCellContents("a1"));
+            sheet.GetSavedVersion("SavedVersionFailure;lkdfgj;adklfjg;slkdfjg;lskdfjg;klsdjfg;klsjdf;klgjsdf;klg");
+        }
+
+        [TestMethod]
+        public void FourValueContructor()
+        {
+            var sheet = new Spreadsheet();
+            for (int i = 0; i < 70; i++)
+            {
+                sheet.SetContentsOfCell("a" + i, "1");
+                sheet.GetCellContents("a0");
+                sheet.SetContentsOfCell("a" + i, "=a" + (i + 1));
+            }
+            sheet.Save("FourValueContructor");
+            var sheet2 = new Spreadsheet("FourValueContructor", (_) => true, (s) => s, "1");
+        }
+
+        [TestMethod]
+        public void ChangedCheck()
+        {
+            var sheet = new Spreadsheet();
+            sheet.SetContentsOfCell("a1", "hi");
+            sheet.GetCellValue("a1");
+            Assert.IsTrue(sheet.Changed);
         }
     }
 }

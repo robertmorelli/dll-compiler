@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FormulaEvaluator\FormulaEvaluator.csproj" />
     <ProjectReference Include="..\Formula\Formula.csproj" />
+    <ProjectReference Include="..\SpreadsheetTests\SpreadsheetTests.csproj" />
   </ItemGroup>
 
 </Project>

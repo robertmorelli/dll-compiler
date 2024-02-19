@@ -20,12 +20,6 @@
 /// I did ask the prof and he said I was allowed to do this
 /// </summary>
 
-
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SpreadsheetUtilities
@@ -39,7 +33,7 @@ namespace SpreadsheetUtilities
         const string opPattern = @"[\+\-*/]";
         const string varPattern = @"[a-zA-Z_](?: [a-zA-Z_]|\d)*";
         const string doublePattern = @"(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: [eE][\+-]?\d+)?";
-        const string spacePattern = @"\s+";
+        const string spacePattern = @"\s+?";
         // Overall pattern
         const string tokenPattern = @"("
                                     + lpPattern + @"|"
@@ -197,9 +191,9 @@ namespace SpreadsheetUtilities
         /// </summary>
         public object Evaluate(Func<string, double> lookup)
         {
-            if (throwDivByZero) return new FormulaError(dbz);
+            if (throwDivByZero) return new FormulaError(dbz + "for string: " + ToString());
             try { return ExecutableAst.Value(lookup); }
-            catch (Exception e) { return new FormulaError(e.Message); }
+            catch (Exception e) { return new FormulaError(ToString() + " : " + e.Message); }
         }
 
         /// <summary>
@@ -257,7 +251,7 @@ namespace SpreadsheetUtilities
         /// new Formula("x1+y2").Equals(new Formula("y2+x1")) is false
         /// new Formula("2.0 + x7").Equals(new Formula("2.000 + x7")) is true
         /// </summary>
-        public override bool Equals(object? obj) => 
+        public override bool Equals(object? obj) =>
             obj != null &&
             (obj.GetType() == typeof(Formula)) &&
             GetHashCode() == obj.GetHashCode();
@@ -318,20 +312,21 @@ namespace SpreadsheetUtilities
                 _leftRef = new(left);
                 _rightRef = new(right);
                 constValue = primary.isImm ? double.Parse(primary.primativeString) : double.NaN;
-                if (LeftChild != null && RightChild != null)
-                {
-                    var realLeft = (TokenNode)LeftChild;
-                    var realRight = (TokenNode)RightChild;
-                    //NaN o K = NaN unless NaN * 0 in some cases does accidental optimizations to remove vars
-                    constValue = primary.primativeString switch
+                if (LeftChild != null)
+                    if (RightChild != null)
                     {
-                        "*" => realLeft.constValue * realRight.constValue,
-                        "/" => realLeft.constValue / realRight.constValue,
-                        "+" => realLeft.constValue + realRight.constValue,
-                        "-" => realLeft.constValue - realRight.constValue,
-                        _ => double.NaN
-                    };
-                }
+                        var realLeft = (TokenNode)LeftChild;
+                        var realRight = (TokenNode)RightChild;
+                        //NaN o K = NaN unless NaN * 0 in some cases does accidental optimizations to remove vars
+                        constValue = primary.primativeString switch
+                        {
+                            "*" => realLeft.constValue * realRight.constValue,
+                            "/" => realLeft.constValue / realRight.constValue,
+                            "+" => realLeft.constValue + realRight.constValue,
+                            "-" => realLeft.constValue - realRight.constValue,
+                            _ => double.NaN
+                        };
+                    }
             }
 
             //optimizes AST tree and returns best version this code can produce
@@ -405,7 +400,7 @@ namespace SpreadsheetUtilities
             }
 
             //does a preorder traversal lisp-y string for debugging "k" indicates calculated constant vals
-            /*public readonly string ToString(Func<string, double>? lo = null, int depth = 0)
+            public readonly string ToString2(Func<string, double>? lo = null, int depth = 0)
             {
                 lo ??= (_) => 1;
                 return
@@ -413,10 +408,22 @@ namespace SpreadsheetUtilities
                     (LeftChild != null ? "(" : "") +
                     primary.primativeString.ToString() +
                     (HasConstValue ? " K" + (LeftChild != null ? " :" + constValue : "") : "") +
-                    LeftChild?.ToString(lo, depth + 1) +
-                    RightChild?.ToString(lo, depth + 1) +
+                    LeftChild?.ToString2(lo, depth + 1) +
+                    RightChild?.ToString2(lo, depth + 1) +
                     (LeftChild != null ? ("\n" + new string(' ', depth * 4) + ")") : "");
-            }*/
+            }
+
+            public readonly string ToString(Func<string, double>? lo = null)
+            {
+                lo ??= (_) => 1;
+                return
+                    (LeftChild != null ? "(" : "") +
+                    LeftChild?.ToString(lo) +
+                    primary.primativeString.ToString() +
+                    RightChild?.ToString(lo) +
+                    (LeftChild != null ? ")" : "");// +
+                                                   //(LeftChild != null ? (HasConstValue ? "=" + constValue : "") : "");
+            }
 
             //who said there were no pointers in "safe" c#?
             internal class ReferenceLMAO(TokenNode? tn) { public TokenNode? tn = tn; }
@@ -736,4 +743,28 @@ namespace SpreadsheetUtilities
         /// </summary>
         public string Reason { get; private set; }
     }
+
+    //tree index builder
+    /*
+    internal struct IB(uint s = 0) {
+        public uint state = s;
+        public static readonly IB Left = new((uint)D.Left);
+        public static readonly IB Right = new((uint)D.Right);
+        internal enum D { Left = 0, Right = 1 }
+        public static IB operator +(IB one, IB two) => new((one.state << two.Length) | two.state);
+        public static IB operator +(IB one, D two) => new((one.state << 1) | (uint)two);
+        public static IB operator --(IB one) => new(one.state >> 1);
+        public uint Length{ get => 32 - (uint)BitOperations.LeadingZeroCount(state); }
+    }
+
+    internal struct ContTree<T> where T : struct
+    {
+        List<T?> list;
+        public T Get(uint index) => Get(new IB(index));
+        public T Get(IB index) { throw new NotImplementedException(); }
+
+        public T Set(uint index) => Set(new IB(index));
+        public T Set(IB index) { throw new NotImplementedException(); }
+
+    }*/
 }

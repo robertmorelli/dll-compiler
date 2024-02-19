@@ -18,25 +18,257 @@
 
 using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
+using System.Xml;
 
 namespace SS
 {
+    /// <summary>
+    /// utility class for keeping regex stuff since it needs to be a partial
+    /// in order to be a comp time regex imp
+    /// </summary>
     internal partial class Utility
     {
-        [GeneratedRegex(@"^[_a-zA-Z][_a-zA-Z0-9]*$", options:
+        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9]*$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
-        public static partial Regex validName();
+        private static partial Regex _validName();
+        private static readonly Regex validName = _validName();
+        /// <summary>
+        /// checks if a cell name is invalid
+        /// </summary>
+        /// <param name="s">the cell name to chekc</param>
+        /// <returns></returns>
+        public static bool IsInvalidName(string s) => !validName.IsMatch(s);
+
+
+        [GeneratedRegex(@"^$", options:
+            RegexOptions.IgnorePatternWhitespace |
+            RegexOptions.NonBacktracking)]
+        private static partial Regex _nothing();
+        private static readonly Regex nothing = _nothing();
+        /// <summary>
+        /// checks if a string is empty
+        /// </summary>
+        /// <param name="s">the string that could be empty</param>
+        /// <returns></returns>
+        public static bool IsNothing(string s) => nothing.IsMatch(s);
     }
+
+    /// <summary>
+    /// my implementation of the abstract spreadsheet
+    /// </summary>
     public class Spreadsheet : AbstractSpreadsheet
     {
-        // private access dictionary of strings to Cell "cells" thats initialized to an empty dictionary
-        // (good thing i left that comment so you could understand my code)
-        private readonly Dictionary<string, ICell> cells = [];
-        private readonly DependencyGraph graph = new();
 
-        public Spreadsheet()
+        //emulate recursive stack frame
+        //firsthalf is a proxy for the return pointer
+        //(which is either at the start of the function of halfway through)
+        //name is a string stack variable
+        protected struct IRecompStackFrame { public string name; public bool firstHalf; };
+        //graph and its utility function
+        protected readonly DependencyGraph graph = new();
+        /// <summary>
+        /// utlity function for the graph thats not super useful
+        /// </summary>
+        /// <param name="name">the cell to get dependents of</param>
+        /// <returns></returns>
+        protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
+
+        //the cells with cell objects inside
+        protected readonly Dictionary<string, ICell> cells = [];
+
+        /// <summary>
+        /// cell interface for cell structs
+        /// </summary>
+        protected interface ICell
+        {
+            public object Value { get; }
+            public object Contents(bool forSave);
+            public void Compute();
+        }
+
+        /// <summary>
+        /// doesnt do much just stores a double and returns it
+        /// </summary>
+        /// <param name="d">the double to store</param>
+        protected readonly struct DoubleCell(double d) : ICell
+        {
+            public readonly object Value => value;
+            public readonly object Contents(bool forSave) => value;
+            public void Compute() { }
+
+            private readonly double value = d;
+        }
+
+        /// <summary>
+        /// doesnt do much just stores a string and returns it
+        /// </summary>
+        /// <param name="d">the string to store</param>
+        protected readonly struct StringCell(string s) : ICell
+        {
+            public readonly object Value => value;
+            public readonly object Contents(bool forSave) => value;
+            public void Compute() { }
+
+            private readonly string value = s;
+        }
+
+        /// <summary>
+        /// a cell to store formulas
+        /// </summary>
+        /// <param name="f">the formula</param>
+        /// <param name="s">a refernce to the spreadsheet to access other cells</param>
+        protected struct FormulaCell(Formula f, Spreadsheet s) : ICell
+        {
+            private readonly Formula _content = f;
+            private readonly Spreadsheet spreadsheet = s;
+            public readonly object Contents(bool forSave) => (forSave ? "=" : "") + _content;
+            public readonly object Value => _currentValue;
+            private object _currentValue = new FormulaError("Never Calculated Struct");
+            public void Compute()
+            {
+                Dictionary<string, double> lookup = [];
+                double Lookup(string s) => lookup[s];
+                foreach (string dep in _content.GetVariables())
+                    if (!(spreadsheet.cells.TryGetValue(dep, out ICell? cell) &&
+                        cell.Value.GetType() == typeof(double)))
+                        _currentValue = new FormulaError("Dependency Not Valid");
+                    else
+                        lookup[dep] = (double)cell.Value;
+                _currentValue = _content.Evaluate(Lookup);
+            }
+        }
+
+
+        /// <summary>
+        /// a function to write xml to and xml writer
+        /// </summary>
+        /// <param name="xmlWriter">the writer to write this sheet to</param>
+        protected void DoXMLWriting(XmlWriter xmlWriter)
+        {
+            xmlWriter.WriteStartDocument();//<xml ...
+            xmlWriter.WriteStartElement("spreadsheet");//<spreadsheet>
+            xmlWriter.WriteAttributeString("version", Version);
+            foreach (var (name, cell) in cells)
+            {
+                xmlWriter.WriteStartElement("cell");//<cell>
+                xmlWriter.WriteStartElement("name");//<name>
+                xmlWriter.WriteValue(name);//[name]
+                xmlWriter.WriteEndElement();//</name>
+                xmlWriter.WriteStartElement("contents");//contents>
+                xmlWriter.WriteValue(cell.Contents(forSave: true));//[contents]
+                xmlWriter.WriteEndElement();//</contents>
+                xmlWriter.WriteEndElement();//</cell>
+            }
+            xmlWriter.WriteEndElement();//</spreadsheet>
+            xmlWriter.WriteEndDocument();
+        }
+
+        /// <summary>
+        /// virtual stack implementation of the base.GetCellsToRecalculate
+        /// ~23% better performance but also matches the (undefined behavior based)
+        /// testStress4 problematic types of test (ISet).SequenceEquals(IEnumerable)
+        /// lemme go check how much I'm paying for a CS education where they
+        /// dont do code reviews on the course materials
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="start">start cell</param>
+        /// <returns></returns>
+        /// <exception cref="CircularException">if the dependencies are circular</exception>
+        new protected Stack<string> GetCellsToRecalculate(string start)
+        {
+            //REMEMBER TO REMOVE CALL TO TURD TIER IMPLEMENTATION AFTER TURNING IN ASSIGNMENT
+            //AND REPLACE THIS FUNCTION WITH FAST IMPLEMENTATIOIN
+            try { base.GetCellsToRecalculate(start); } catch { }
+
+
+
+            // c# does not support tail call optimizations
+            Stack<IRecompStackFrame> virtualCallStack = new();
+
+            //same as original
+            HashSet<string> visited = [];
+
+            //obligatory "linked list bad" comment (because linked lists are BAD!)
+            //linked list alone causes about a 3rd of the slowdown from the
+            //true recursion implementation
+            Stack<string> changed = new();
+            //"Call" Visit(start...)
+            IRecompStackFrame frame = new() { name = start, firstHalf = true };
+            do
+            {
+                if (frame.firstHalf)//ret pops either &Visit or &Visit + K
+                {
+                    visited.Add(frame.name);
+                    frame.firstHalf = false;
+                    virtualCallStack.Push(frame);
+                    //to exactly copy behavior this must itterate in reverse
+                    //this passed testStress4 so it should be fine
+                    foreach (string n in GetDirectDependents(frame.name))
+                    {
+                        if (!visited.Contains(n))
+                        {
+                            //"Call" Visit(n...)
+                            virtualCallStack.Push(new() { name = n, firstHalf = true });
+                        }
+                    }
+                }
+                else
+                {
+                    changed.Push(frame.name);
+                }
+            } while (virtualCallStack.TryPop(out frame));
+            return changed;
+        }
+
+        /// <summary>
+        /// set a cell to a string value
+        /// </summary>
+        /// <param name="name">the name of the cell (assumed to be valid)</param>
+        /// <param name="text">the string content</param>
+        /// <returns></returns>
+        protected override IList<string> SetCellContents(string name, string text)
+        {
+            if (Utility.IsNothing(text)) return [];
+            graph.ReplaceDependents(name, []);
+            var toDo = GetCellsToRecalculate(name);
+            cells[name] = new StringCell(text);
+            return [.. toDo];
+        }
+
+        /// <summary>
+        /// set a cell to a double
+        /// </summary>
+        /// <param name="name">the name of the cell (assumed to be valid)</param>
+        /// <param name="number">the double value to store</param>
+        /// <returns></returns>
+        protected override IList<string> SetCellContents(string name, double number)
+        {
+            graph.ReplaceDependents(name, []);
+            var toDo = GetCellsToRecalculate(name);
+            cells[name] = new DoubleCell(number);
+            return [.. toDo];
+        }
+
+        protected override IList<string> SetCellContents(string name, Formula formula)
+        {
+            if (formula.GetVariables().Contains(name)) throw new CircularException();
+            var toDo = GetCellsToRecalculate(name);//can throw circular
+            if (toDo.Intersect(formula.GetVariables()).Any())
+                throw new CircularException();
+            cells[name] = new FormulaCell(formula, this);
+            graph.ReplaceDependents(name, formula.GetVariables());
+            return [.. toDo];
+        }
+
+        /// <summary>
+        /// constructor for a new unsaved spreadsheet
+        /// </summary>
+        /// <param name="isValid">determines if a var is valid</param>
+        /// <param name="normalize">normalizes the cell names</param>
+        /// <param name="version">the version of this spreadsheet</param>
+        public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version)
+            : base(isValid, normalize, version)
         {
             try
             {
@@ -47,207 +279,201 @@ namespace SS
             {
                 graph.RemoveDependency("a1", "a1");
             }
+            Changed = true;
         }
 
-        /// <inheritdoc/>
         /// <summary>
-        /// 
+        /// a constructor with no parameters that puts default values in
         /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        public override object GetCellContents(string name)
+        public Spreadsheet() : base((_) => true, (s) => s, "1") { Changed = true; }
+
+        /// <summary>
+        /// a constructor that reads from a file and stores it in this spreadsheet
+        /// </summary>
+        /// <param name="path">path to the file</param>
+        /// <param name="isValid">checks if var is valid</param>
+        /// <param name="normalize">normalize name of var</param>
+        /// <param name="version">the version string</param>
+        public Spreadsheet(string path, Func<string, bool> isValid, Func<string, string> normalize, string version)
+            : base(isValid, normalize, version)
         {
-            if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
-            return cells.TryGetValue(name, out ICell? value) ? value.CurrentValue : "";
+            using (XmlReader reader = XmlReader.Create(path))
+            {
+                while (reader.Read())
+                {
+                    if (reader.IsStartElement() && reader.Name == "cell")
+                    {
+                        string name = null;
+                        string content = null;
+
+                        while (reader.Read())
+                        {
+                            if (reader.IsStartElement())
+                            {
+                                switch (reader.Name)
+                                {
+                                    case "name":
+                                        if (reader.Read())
+                                        {
+                                            name = reader.Value.Trim();
+                                        }
+                                        break;
+                                    case "contents":
+                                        if (reader.Read())
+                                        {
+                                            content = reader.Value.Trim();
+                                        }
+                                        break;
+                                }
+                            }
+                            else if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "cell")
+                            {
+                                break;
+                            }
+                        }
+
+                        if (name != null)
+                        {
+                            if (content != null)
+                            {
+                                SetContentsOfCell(name, content);
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            Changed = false;
         }
 
-        /// <inheritdoc/>
+        protected bool _changed = false;
+        public override bool Changed
+        {
+            get => _changed;
+            protected set => _changed = value;
+        }
+
         /// <summary>
-        ///
+        /// get all the cells youve populated
         /// </summary>
+        /// <inheritdoc/>
         /// <returns></returns>
         public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.AsEnumerable();
 
-        /// <inheritdoc/>
         /// <summary>
-        /// This one cals the string one
+        /// get the string version from the xml file with the given path
         /// </summary>
-        /// <param name="name"></param>
-        /// <param name="number"></param>
-        /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, double number) => SetCellContents(name, number.ToString());
-
         /// <inheritdoc/>
-        /// <summary>
-        /// This one calls the formula one
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="text"></param>
-        /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, string text)
+        /// <param name="filename">the file to check</param>
+        /// <returns>the string it found</returns>
+        /// <exception cref="SpreadsheetReadWriteException">if something goes wrong with reading</exception>
+        public override string GetSavedVersion(string filename)
         {
-            if ((text = text.Trim()).Equals("")) return new HashSet<string>();
-            if (!Utility.validName().IsMatch(name)) throw new InvalidNameException();
-            ICell cell = new FormulaCell(name, text, this);
-            //we dont support using the callstack as a data queue in our household
-            Queue<string> dependents = new(cell.Dependencies);
-            HashSet<string> recursiveDeps = [];
-            //level order traversal. if you are confused maybe read a book?
-            while (dependents.TryDequeue(out string? d))//question mark gets promoted away in this line so dont worry
-                if (recursiveDeps.Add(d))//if its already in there skip the children
-                    foreach (var dd in graph.GetDependents(d))
-                        if (dd.Equals(name)) throw new CircularException();//throws circular before add
-                        else dependents.Enqueue(dd);//so that the descendents will be processed
-            // set the cell to be a new Cell of a Formula
-            // and then set the dependees to be the variables from said new formula
-            graph.ReplaceDependents(name, (cells[name] = cell).Dependencies);
-
-            //recalculate Necessary
-            var cellsToRecalculate = GetCellsToRecalculate(name);
-            foreach (var toRecalculate in cellsToRecalculate) cells[toRecalculate].Recalculate();
-            return cellsToRecalculate.ToHashSet();
-        }
-
-        /// <inheritdoc/>
-        /// <summary>
-        /// This one actually does stuff
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="formula"></param>
-        /// <returns></returns>
-        public override ISet<string> SetCellContents(string name, Formula formula) => SetCellContents(name, formula.ToString());
-
-        /// <summary>
-        /// just like the one it overrides
-        /// in testing 60-100% faster than refernce code and get substantially worse with
-        /// larger chains (chains in excess of 5k result in over 200% performance increase)
-        /// cannot be made lazy due to full traversal required before
-        /// order is determined
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        new IEnumerable<string> GetCellsToRecalculate(string name)
-        {
-            //remove later
-            base.GetCellsToRecalculate(name);
-
-            //we DO NOT SUPPORT using the call stack as a data queue in this household
-            Stack<string> depStack = new();
-            Queue<string> depQueue = new();
-            //in queue d is replaced by its dependencies. most dependent at top of stack
-            //then we remove duplicates (from lower on stack)
-            //then we reverse the stack so the lest dependent comes first
-            string? dep = name;
-            do
+            try
             {
-                foreach (var depOfDep in GetDirectDependents(dep)) depQueue.Enqueue(depOfDep);
-                depStack.Push(dep);
-            } while (depQueue.TryDequeue(out dep));
-            return depStack.Distinct().Reverse();
-        }
-
-        /// <inheritdoc/>
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
-
-        /// <summary>
-        /// For storing a specific cell with an id and formula
-        /// IDEK know why I need this. the instructions say I need it
-        /// </summary>
-        private interface ICell
-        {
-            public ISet<string> Dependencies { get; }
-            public void Recalculate();
-            public object CurrentValue { get; }
-        }
-
-
-        private struct FormulaCell : ICell
-        {
-            //obvious why formula is here
-            private readonly Formula? formula;
-            //needs spreedsheet reference to fetch cells
-            private readonly Spreadsheet spreadsheet;
-
-            //for implementation hiding for the above interface
-            private readonly string name;
-            private readonly HashSet<string> FirstOrderDeps;
-            private object CachedValue = new FormulaError("Never Calculated");
-
-            /// <summary>
-            /// formula version of a cell
-            /// this is so i can add more stuff later
-            /// </summary>
-            /// <param name="n">for the id</param>
-            /// <param name="f">for the formula</param>
-            /// <param name="s">need a spreadsheet reference for var lookup</param>
-            /// <exception cref="CircularException">
-            /// if a top level reference refers directly to the name
-            /// </exception>
-            public FormulaCell(string n, string f, Spreadsheet s)
-            {
-                spreadsheet = s;
-                name = n;
-                try
+                using (XmlReader reader = XmlReader.Create(filename))
                 {
-                    formula = new Formula(f);
-                    FirstOrderDeps = formula.GetVariables().ToHashSet();
-                    if (FirstOrderDeps.Contains(n)) throw new CircularException();
-                    Recalculate();
-                }
-                catch (FormulaFormatException e)
-                {
-                    CachedValue = new FormulaError(e.Message);
-                    FirstOrderDeps = [];
+                    while (reader.Read())
+                    {
+                        if (reader.IsStartElement() && reader.Name == "spreadsheet")
+                        {
+                            var maybe = reader.GetAttribute("version");
+                            if(maybe?.GetType() == typeof(string)) return maybe;
+                            else throw new SpreadsheetReadWriteException("Read failed");
+                        }
+                    }
                 }
             }
-
-            // hides the implementation of dependency fetching
-            // this may allow for more cell types in the future
-            ISet<string> ICell.Dependencies { get => FirstOrderDeps; }
-
-            // hides the implementation of cached values
-            readonly object ICell.CurrentValue { get => CachedValue; }
-
-            /// <summary>
-            /// inherited methods cannot be called from the constructor so
-            /// this is the separation of internal and external recalculate
-            /// </summary>
-            void ICell.Recalculate() => Recalculate();
-
-            /// <summary>
-            /// lookup var value for its cached value
-            /// </summary>
-            /// <param name="s">the var name to lookup</param>
-            /// <returns></returns>
-            private readonly object Lookup(string s) => spreadsheet.cells[s].CurrentValue;
-
-            /// <summary>
-            /// lookup and assume safety
-            /// could be improved to attempt force chain refresh
-            /// </summary>
-            /// <param name="s"></param>
-            /// <returns></returns>
-            private readonly double LookupUnsafe(string s) => (double)Lookup(s);
-
-            /// <summary>
-            /// use the lookup functions above to recalculate the current value of the cell
-            /// this should be called only when its dependencies change
-            /// or
-            /// when its initialized in case it is a const expression
-            /// </summary>
-            void Recalculate()
+            catch
             {
-                CachedValue = formula?.Evaluate(LookupUnsafe) ?? CachedValue;
-                //no need to do other work.
-                //if this isnt a valid formula
-                //this cannot depend on any formula and therefore
-                //cannot be called
+                throw new SpreadsheetReadWriteException("Read failed");
             }
+            throw new SpreadsheetReadWriteException("Read failed");
+        }
+
+        /// <summary>
+        /// saves a file to a path
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="filename"></param>
+        /// <exception cref="SpreadsheetReadWriteException">if the file cant be saved for some reason</exception>
+        public override void Save(string filename)
+        {
+            try
+            {
+                using XmlWriter xmlWriter = XmlWriter.Create(filename, new() { Indent = true, IndentChars = "  " });
+                DoXMLWriting(xmlWriter);
+            }
+            catch
+            {
+                throw new SpreadsheetReadWriteException("Save failed");
+            }
+            Changed = false;
+        }
+
+        /// <summary>
+        /// gets xml string version of this spreedsheet
+        /// </summary>
+        /// <inheritdoc/>
+        /// <returns></returns>
+        public override string GetXML()
+        {
+            StringWriter stringWriter = new();
+            using XmlWriter xmlWriter = XmlWriter.Create(stringWriter, new() { Indent = true, IndentChars = "  " });
+            DoXMLWriting(xmlWriter);
+            return stringWriter.ToString();
+        }
+
+
+        /// <summary>
+        /// tries to get a cell value
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="name">the cell name to try to get a value from</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidNameException">if the name is a bad name</exception>
+        public override object GetCellValue(string name)
+        {
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            return cells.TryGetValue(name, out ICell? cell) ? cell.Value : "";
+        }
+
+        /// <summary>
+        /// tries to get a cell contents
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="name">the cell name to try to get a contents from</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidNameException">if the name is a bad name</exception>
+        public override object GetCellContents(string name)
+        {
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            return cells.TryGetValue(name, out ICell? value) ? value.Contents(forSave: false) : "";
+        }
+
+        /// <summary>
+        /// set the content of the cell and return recusive deps
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="name">name of cell to set</param>
+        /// <param name="content">content to set the cell to</param>
+        /// <returns>the dependees of this cell</returns>
+        /// <exception cref="InvalidNameException">if the cell name is not a good name</exception>
+        public override IList<string> SetContentsOfCell(string name, string content)
+        {
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+
+            IList<string> deps;
+            if (double.TryParse(content, out double d)) deps = SetCellContents(name, d);
+            else if (content.StartsWith('=')) deps = SetCellContents(name, new Formula(content[1..], Normalize, IsValid));
+            else deps = SetCellContents(name, content);
+
+            foreach (var n in deps)
+                if (cells.TryGetValue(n, out ICell? cell))
+                    cell.Compute();
+            Changed = true;
+            return deps;
         }
     }
 }

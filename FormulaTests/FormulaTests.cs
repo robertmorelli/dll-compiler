@@ -405,6 +405,13 @@ namespace FormulaTests
             Assert.AreEqual(true, a.Equals("5"));
         }
 
+        [TestMethod]
+        public void Example()
+        {
+            var a = new Formula("a1 / (3 - 1)");
+            a.Evaluate((_)=>1);
+        }
+
         //fuzzing
         [TestMethod]
         public void fuzz()
