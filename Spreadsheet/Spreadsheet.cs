@@ -1,10 +1,31 @@
-﻿using SpreadsheetUtilities;
-using System.IO;
+﻿/// <summary>
+/// Author:    Robert Morelli
+/// Partner:   None
+/// Date:      2-9-24
+/// Course:    CS 3500, University of Utah, School of Computing
+/// Copyright: CS 3500 and [Your Name(s)] - This work may not 
+///            be copied for use in Academic Coursework.
+///
+/// I, Robert Morelli, certify that I wrote this code from scratch and
+/// did not copy it in part or whole from code that is not my own. All 
+/// references to code that is not my own used in the completion of the
+/// assignments are cited in my README file.
+///
+/// File Contents:
+/// My implementation of AbstractSpreadsheet
+/// </summary>
+
+
+using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace SS
 {
+    /// <summary>
+    /// utility class for keeping regex stuff since it needs to be a partial
+    /// in order to be a comp time regex imp
+    /// </summary>
     internal partial class Utility
     {
         [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9]*$", options:
@@ -23,11 +44,26 @@ namespace SS
         public static bool IsNothing(string s) => nothing.IsMatch(s);
     }
 
+    /// <summary>
+    /// my implementation of the abstract spreadsheet
+    /// </summary>
     public class Spreadsheet : AbstractSpreadsheet
     {
+        //graph and its utility function
         protected readonly DependencyGraph graph = new();
+        /// <summary>
+        /// utlity function for the graph thats not super useful
+        /// </summary>
+        /// <param name="name">the cell to get dependents of</param>
+        /// <returns></returns>
         protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
+
+        //the cells with cell objects inside
         protected readonly Dictionary<string, ICell> cells = [];
+
+        /// <summary>
+        /// cell interface for cell structs
+        /// </summary>
         protected interface ICell
         {
             public object Value { get; }
@@ -35,6 +71,10 @@ namespace SS
             public void Compute();
         }
 
+        /// <summary>
+        /// doesnt do much just stores a double and returns it
+        /// </summary>
+        /// <param name="d">the double to store</param>
         protected readonly struct DoubleCell(double d) : ICell
         {
             public readonly object Value => value;
@@ -44,6 +84,10 @@ namespace SS
             private readonly double value = d;
         }
 
+        /// <summary>
+        /// doesnt do much just stores a string and returns it
+        /// </summary>
+        /// <param name="d">the string to store</param>
         protected readonly struct StringCell(string s) : ICell
         {
             public readonly object Value => value;
@@ -121,11 +165,7 @@ namespace SS
                     //this passed testStress4 so it should be fine
                     foreach (string n in GetDirectDependents(frame.name))
                     {
-                        if (n.Equals(start))
-                        {
-                            throw new CircularException();
-                        }
-                        else if (!visited.Contains(n))
+                        if (!visited.Contains(n))
                         {
                             //"Call" Visit(n...)
                             virtualCallStack.Push(new() { name = n, firstHalf = true });
@@ -159,8 +199,10 @@ namespace SS
 
         protected override IList<string> SetCellContents(string name, Formula formula)
         {
-            //if (formula.GetVariables().Contains(name)) throw new CircularException();
+            if (formula.GetVariables().Contains(name)) throw new CircularException();
             var toDo = GetCellsToRecalculate(name);//can throw circular
+            if (toDo.Intersect(formula.GetVariables()).Any())
+                throw new CircularException();
             cells[name] = new FormulaCell(formula, this);
             graph.ReplaceDependents(name, formula.GetVariables());
             return [.. toDo];
