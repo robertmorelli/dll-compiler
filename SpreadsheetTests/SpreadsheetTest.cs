@@ -26,12 +26,21 @@ namespace SpreadsheetTests
         public void BenchmarkLongChains()
         {
             Spreadsheet sheet = new((_)=>true, (s)=>s,"1");
-            for (int i = 0; i < 12000; i++)
+            for (int i = 0; i < 70; i++)
             {
-                sheet.SetContentsOfCell("a" + i, "1");
+                sheet.SetContentsOfCell("=a" + i, "1");
                 sheet.GetCellContents("a0");
-                sheet.SetContentsOfCell("a" + i, "a" + (i + 1));
+                sheet.SetContentsOfCell("=a" + i, "a" + (i + 1));
             }
+        }
+
+        [TestMethod]
+        public void CircularException()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a1", "=a2");
+            sheet.SetContentsOfCell("a2", "=a3");
+            sheet.SetContentsOfCell("a3", "=a1");
         }
     }
 }

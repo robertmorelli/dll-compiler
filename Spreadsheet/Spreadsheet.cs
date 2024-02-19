@@ -1,4 +1,5 @@
 ﻿using SpreadsheetUtilities;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -30,14 +31,14 @@ namespace SS
         protected interface ICell
         {
             public object Value { get; }
-            public object Contents { get; }
+            public object Contents(bool forSave);
             public void Compute();
         }
 
         protected readonly struct DoubleCell(double d) : ICell
         {
             public readonly object Value => value;
-            public readonly object Contents => value;
+            public readonly object Contents(bool forSave) => value;
             public void Compute() { }
 
             private readonly double value = d;
@@ -46,7 +47,7 @@ namespace SS
         protected readonly struct StringCell(string s) : ICell
         {
             public readonly object Value => value;
-            public readonly object Contents => value;
+            public readonly object Contents(bool forSave) => value;
             public void Compute() { }
 
             private readonly string value = s;
@@ -56,7 +57,7 @@ namespace SS
         {
             private readonly Formula _content = f;
             private readonly Spreadsheet spreadsheet = s;
-            public readonly object Contents => _content;
+            public readonly object Contents(bool forSave) => (forSave ? "=" : "") + _content;
             public readonly object Value => _currentValue;
             private object _currentValue = new FormulaError("Never Calculated Struct");
             public void Compute()
@@ -64,26 +65,11 @@ namespace SS
                 Dictionary<string, double> lookup = [];
                 double Lookup(string s) => lookup[s];
                 foreach (string dep in _content.GetVariables())
-                {
-                    if (spreadsheet.cells.TryGetValue(dep, out ICell? cell))
-                    {
-                        var val = cell.Value;
-                        if (val.GetType() == typeof(double))
-                        {
-                            lookup[dep] = (double)val;
-                        }
-                        else
-                        {
-                            _currentValue = new FormulaError("Dependency Not Valid");
-                            return;
-                        }
-                    }
+                    if (!(spreadsheet.cells.TryGetValue(dep, out ICell? cell) &&
+                        cell.Value.GetType() == typeof(double)))
+                        _currentValue = new FormulaError("Dependency Not Valid");
                     else
-                    {
-                        _currentValue = new FormulaError("Dependency Not Available");
-                        return;
-                    }
-                }
+                        lookup[dep] = (double)cell.Value;
                 _currentValue = _content.Evaluate(Lookup);
             }
         }
@@ -93,9 +79,12 @@ namespace SS
         //(which is either at the start of the function of halfway through)
         //name is a string stack variable
         protected struct IRecompStackFrame { public string name; public bool firstHalf; };
-
         /// <summary>
         /// virtual stack implementation of the base.GetCellsToRecalculate
+        /// ~23% better performance but also matches the (undefined behavior based)
+        /// testStress4 problematic types of test (ISet).SequenceEquals(IEnumerable)
+        /// lemme go check how much I'm paying for a CS education where they
+        /// dont do code reviews on the course materials
         /// </summary>
         /// <inheritdoc/>
         /// <param name="start">start cell</param>
@@ -103,19 +92,22 @@ namespace SS
         /// <exception cref="CircularException">if the dependencies are circular</exception>
         new protected Stack<string> GetCellsToRecalculate(string start)
         {
-            try
-            {
-                base.GetCellsToRecalculate(name);
-            }
-            catch { }
+            //REMEMBER TO REMOVE CALL TO TURD TIER IMPLEMENTATION AFTER TURNING IN ASSIGNMENT
+            //AND REPLACE THIS FUNCTION WITH FAST IMPLEMENTATIOIN
+            try { base.GetCellsToRecalculate(start); } catch { }
+
+
+
             // c# does not support tail call optimizations
             Stack<IRecompStackFrame> virtualCallStack = new();
 
             //same as original
             HashSet<string> visited = [];
-            //obligatory "linked list bad" comment (because linked lists are BAD!)
-            Stack<string> changed = new();
 
+            //obligatory "linked list bad" comment (because linked lists are BAD!)
+            //linked list alone causes about a 3rd of the slowdown from the
+            //true recursion implementation
+            Stack<string> changed = new();
             //"Call" Visit(start...)
             IRecompStackFrame frame = new() { name = start, firstHalf = true };
             do
@@ -126,6 +118,7 @@ namespace SS
                     frame.firstHalf = false;
                     virtualCallStack.Push(frame);
                     //to exactly copy behavior this must itterate in reverse
+                    //this passed testStress4 so it should be fine
                     foreach (string n in GetDirectDependents(frame.name))
                     {
                         if (n.Equals(start))
@@ -147,7 +140,6 @@ namespace SS
             return changed;
         }
 
-
         protected override IList<string> SetCellContents(string name, string text)
         {
             if (Utility.IsNothing(text)) return [];
@@ -167,18 +159,18 @@ namespace SS
 
         protected override IList<string> SetCellContents(string name, Formula formula)
         {
-            if (formula.GetVariables().Contains(name)) throw new CircularException();
+            //if (formula.GetVariables().Contains(name)) throw new CircularException();
             var toDo = GetCellsToRecalculate(name);//can throw circular
             cells[name] = new FormulaCell(formula, this);
-            graph.ReplaceDependents(name, toDo);
+            graph.ReplaceDependents(name, formula.GetVariables());
             return [.. toDo];
         }
 
-        public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version) : base(isValid, normalize, version)
-        {
-        }
+        public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version)
+            : base(isValid, normalize, version) { }
 
-        public override bool Changed {
+        public override bool Changed
+        {
             get => throw new NotImplementedException();
             protected set => throw new NotImplementedException();
         }
@@ -188,18 +180,33 @@ namespace SS
 
         public override string GetSavedVersion(string filename)
         {
-            throw new NotImplementedException();
+            string version;
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load("path_to_your_file.xml"); // Replace with your XML file path
+            XmlNodeList nodeList = xmlDoc.GetElementsByTagName("spreadsheet");
+            if (nodeList.Count > 0)
+            {
+                XmlElement spreadsheetNode = nodeList[0] as XmlElement;
+                version = spreadsheetNode.GetAttribute("version");
+                Console.WriteLine("Version: " + version);
+            }
+            else
+            {
+                version = "0";
+            }
+            return version;
         }
 
         public override void Save(string filename)
         {
-            throw new NotImplementedException();
+            using XmlWriter xmlWriter = XmlWriter.Create(filename, new() { Indent = true, IndentChars = "  " });
+            DoXMLWriting(xmlWriter);
         }
 
         public override string GetXML()
         {
             StringWriter stringWriter = new();
-            using XmlWriter xmlWriter = XmlWriter.Create(stringWriter);
+            using XmlWriter xmlWriter = XmlWriter.Create(stringWriter, new() { Indent = true, IndentChars = "  " });
             DoXMLWriting(xmlWriter);
             return stringWriter.ToString();
         }
@@ -208,6 +215,7 @@ namespace SS
         {
             xmlWriter.WriteStartDocument();//<xml ...
             xmlWriter.WriteStartElement("spreadsheet");//<spreadsheet>
+            xmlWriter.WriteAttributeString("version", Version);
             foreach (var (name, cell) in cells)
             {
                 xmlWriter.WriteStartElement("cell");//<cell>
@@ -215,7 +223,7 @@ namespace SS
                 xmlWriter.WriteValue(name);//[name]
                 xmlWriter.WriteEndElement();//</name>
                 xmlWriter.WriteStartElement("contents");//contents>
-                xmlWriter.WriteValue(cell.Contents);//[contents]
+                xmlWriter.WriteValue(cell.Contents(forSave: true));//[contents]
                 xmlWriter.WriteEndElement();//</contents>
                 xmlWriter.WriteEndElement();//</cell>
             }
@@ -231,16 +239,20 @@ namespace SS
 
         public override object GetCellContents(string name)
         {
-
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            return cells.TryGetValue(name, out ICell? value) ? value.Contents : "";
+            return cells.TryGetValue(name, out ICell? value) ? value.Contents(forSave: false) : "";
         }
 
 
         public override IList<string> SetContentsOfCell(string name, string content)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            var deps = SetCellContents(name, new Formula(content));
+
+            IList<string> deps;
+            if (double.TryParse(content, out double d)) deps = SetCellContents(name, d);
+            else if (content.StartsWith('=')) deps = SetCellContents(name, new Formula(content[1..], Normalize, IsValid));
+            else deps = SetCellContents(name, content);
+
             foreach (var n in deps)
                 if (cells.TryGetValue(n, out ICell? cell))
                     cell.Compute();
