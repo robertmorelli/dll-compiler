@@ -49,6 +49,12 @@ namespace SS
     /// </summary>
     public class Spreadsheet : AbstractSpreadsheet
     {
+
+        //emulate recursive stack frame
+        //firsthalf is a proxy for the return pointer
+        //(which is either at the start of the function of halfway through)
+        //name is a string stack variable
+        protected struct IRecompStackFrame { public string name; public bool firstHalf; };
         //graph and its utility function
         protected readonly DependencyGraph graph = new();
         /// <summary>
@@ -118,11 +124,28 @@ namespace SS
             }
         }
 
-        //emulate recursive stack frame
-        //firsthalf is a proxy for the return pointer
-        //(which is either at the start of the function of halfway through)
-        //name is a string stack variable
-        protected struct IRecompStackFrame { public string name; public bool firstHalf; };
+
+
+        protected void DoXMLWriting(XmlWriter xmlWriter)
+        {
+            xmlWriter.WriteStartDocument();//<xml ...
+            xmlWriter.WriteStartElement("spreadsheet");//<spreadsheet>
+            xmlWriter.WriteAttributeString("version", Version);
+            foreach (var (name, cell) in cells)
+            {
+                xmlWriter.WriteStartElement("cell");//<cell>
+                xmlWriter.WriteStartElement("name");//<name>
+                xmlWriter.WriteValue(name);//[name]
+                xmlWriter.WriteEndElement();//</name>
+                xmlWriter.WriteStartElement("contents");//contents>
+                xmlWriter.WriteValue(cell.Contents(forSave: true));//[contents]
+                xmlWriter.WriteEndElement();//</contents>
+                xmlWriter.WriteEndElement();//</cell>
+            }
+            xmlWriter.WriteEndElement();//</spreadsheet>
+            xmlWriter.WriteEndDocument();
+        }
+
         /// <summary>
         /// virtual stack implementation of the base.GetCellsToRecalculate
         /// ~23% better performance but also matches the (undefined behavior based)
@@ -246,27 +269,6 @@ namespace SS
 
         public override string GetSavedVersion(string filename)
         {
-            string version;
-            try
-            {
-                XmlDocument xmlDoc = new XmlDocument();
-                xmlDoc.Load("path_to_your_file.xml"); // Replace with your XML file path
-                XmlNodeList nodeList = xmlDoc.GetElementsByTagName("spreadsheet");
-                if (nodeList.Count > 0)
-                {
-                    //XmlElement spreadsheetNode = nodeList.Item(0);
-                    //version = spreadsheetNode.GetAttribute("version");
-                    //Console.WriteLine("Version: " + version);
-                }
-                else
-                {
-                    version = "0";
-                }
-            }
-            catch
-            {
-                throw new SpreadsheetReadWriteException("Read Version failed");
-            }
             return "1";
         }
 
@@ -292,25 +294,7 @@ namespace SS
             return stringWriter.ToString();
         }
 
-        protected void DoXMLWriting(XmlWriter xmlWriter)
-        {
-            xmlWriter.WriteStartDocument();//<xml ...
-            xmlWriter.WriteStartElement("spreadsheet");//<spreadsheet>
-            xmlWriter.WriteAttributeString("version", Version);
-            foreach (var (name, cell) in cells)
-            {
-                xmlWriter.WriteStartElement("cell");//<cell>
-                xmlWriter.WriteStartElement("name");//<name>
-                xmlWriter.WriteValue(name);//[name]
-                xmlWriter.WriteEndElement();//</name>
-                xmlWriter.WriteStartElement("contents");//contents>
-                xmlWriter.WriteValue(cell.Contents(forSave: true));//[contents]
-                xmlWriter.WriteEndElement();//</contents>
-                xmlWriter.WriteEndElement();//</cell>
-            }
-            xmlWriter.WriteEndElement();//</spreadsheet>
-            xmlWriter.WriteEndDocument();
-        }
+        
 
         public override object GetCellValue(string name)
         {

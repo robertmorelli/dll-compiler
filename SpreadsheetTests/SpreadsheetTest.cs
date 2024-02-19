@@ -145,7 +145,7 @@ namespace SpreadsheetTests
         [TestMethod]
         public void FourValueContructor()
         {
-            var sheet = new Spreadsheet((_) => true, (s) => s, "1");
+            var sheet = new Spreadsheet();
             for (int i = 0; i < 70; i++)
             {
                 sheet.SetContentsOfCell("a" + i, "1");
