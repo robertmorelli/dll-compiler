@@ -209,7 +209,18 @@ namespace SS
         }
 
         public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version)
-            : base(isValid, normalize, version) { }
+            : base(isValid, normalize, version)
+        {
+            try
+            {
+                graph.AddDependency("a1", "a1");
+                base.GetCellsToRecalculate("a1");
+            }
+            catch (Exception)
+            {
+                graph.RemoveDependency("a1", "a1");
+            }
+        }
 
         public override bool Changed
         {
@@ -223,26 +234,40 @@ namespace SS
         public override string GetSavedVersion(string filename)
         {
             string version;
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load("path_to_your_file.xml"); // Replace with your XML file path
-            XmlNodeList nodeList = xmlDoc.GetElementsByTagName("spreadsheet");
-            if (nodeList.Count > 0)
+            try
             {
-                XmlElement spreadsheetNode = nodeList[0] as XmlElement;
-                version = spreadsheetNode.GetAttribute("version");
-                Console.WriteLine("Version: " + version);
+                XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.Load("path_to_your_file.xml"); // Replace with your XML file path
+                XmlNodeList nodeList = xmlDoc.GetElementsByTagName("spreadsheet");
+                if (nodeList.Count > 0)
+                {
+                    XmlElement spreadsheetNode = nodeList[0] as XmlElement;
+                    version = spreadsheetNode.GetAttribute("version");
+                    Console.WriteLine("Version: " + version);
+                }
+                else
+                {
+                    version = "0";
+                }
             }
-            else
+            catch
             {
-                version = "0";
+                throw new SpreadsheetReadWriteException("Read Version failed");
             }
             return version;
         }
 
         public override void Save(string filename)
         {
-            using XmlWriter xmlWriter = XmlWriter.Create(filename, new() { Indent = true, IndentChars = "  " });
-            DoXMLWriting(xmlWriter);
+            try
+            {
+                using XmlWriter xmlWriter = XmlWriter.Create(filename, new() { Indent = true, IndentChars = "  " });
+                DoXMLWriting(xmlWriter);
+            }
+            catch
+            {
+                throw new SpreadsheetReadWriteException("Save failed");
+            }
         }
 
         public override string GetXML()

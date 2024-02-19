@@ -127,5 +127,19 @@ namespace SpreadsheetTests
             sheet.SetContentsOfCell("a3", "=6+8");
             sheet.GetCellContents("a3");
         }
+
+        [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]
+        public void ReadFailure()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.GetSavedVersion("");
+        }
+
+        [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]
+        public void SaveFailure()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.Save("");
+        }
     }
 }
