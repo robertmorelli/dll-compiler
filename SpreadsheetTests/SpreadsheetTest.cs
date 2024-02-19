@@ -155,5 +155,13 @@ namespace SpreadsheetTests
             sheet.Save("FourValueContructor");
             var sheet2 = new Spreadsheet("FourValueContructor", (_) => true, (s) => s, "1");
         }
+
+        [TestMethod]
+        public void ChangedCheck()
+        {
+            var sheet = new Spreadsheet();
+            sheet.SetContentsOfCell("a1", "hi");
+            Assert.IsTrue(sheet.Changed);
+        }
     }
 }

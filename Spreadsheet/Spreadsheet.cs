@@ -321,6 +321,7 @@ namespace SS
             foreach (var n in deps)
                 if (cells.TryGetValue(n, out ICell? cell))
                     cell.Compute();
+            Changed = true;
             return deps;
         }
     }
