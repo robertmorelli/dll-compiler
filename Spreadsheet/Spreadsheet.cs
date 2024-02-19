@@ -33,6 +33,11 @@ namespace SS
             RegexOptions.NonBacktracking)]
         private static partial Regex _validName();
         private static readonly Regex validName = _validName();
+        /// <summary>
+        /// checks if a cell name is invalid
+        /// </summary>
+        /// <param name="s">the cell name to chekc</param>
+        /// <returns></returns>
         public static bool IsInvalidName(string s) => !validName.IsMatch(s);
 
 
@@ -41,6 +46,11 @@ namespace SS
             RegexOptions.NonBacktracking)]
         private static partial Regex _nothing();
         private static readonly Regex nothing = _nothing();
+        /// <summary>
+        /// checks if a string is empty
+        /// </summary>
+        /// <param name="s">the string that could be empty</param>
+        /// <returns></returns>
         public static bool IsNothing(string s) => nothing.IsMatch(s);
     }
 
@@ -103,6 +113,11 @@ namespace SS
             private readonly string value = s;
         }
 
+        /// <summary>
+        /// a cell to store formulas
+        /// </summary>
+        /// <param name="f">the formula</param>
+        /// <param name="s">a refernce to the spreadsheet to access other cells</param>
         protected struct FormulaCell(Formula f, Spreadsheet s) : ICell
         {
             private readonly Formula _content = f;
@@ -125,7 +140,10 @@ namespace SS
         }
 
 
-
+        /// <summary>
+        /// a function to write xml to and xml writer
+        /// </summary>
+        /// <param name="xmlWriter">the writer to write this sheet to</param>
         protected void DoXMLWriting(XmlWriter xmlWriter)
         {
             xmlWriter.WriteStartDocument();//<xml ...
@@ -203,6 +221,12 @@ namespace SS
             return changed;
         }
 
+        /// <summary>
+        /// set a cell to a string value
+        /// </summary>
+        /// <param name="name">the name of the cell (assumed to be valid)</param>
+        /// <param name="text">the string content</param>
+        /// <returns></returns>
         protected override IList<string> SetCellContents(string name, string text)
         {
             if (Utility.IsNothing(text)) return [];
@@ -212,6 +236,12 @@ namespace SS
             return [.. toDo];
         }
 
+        /// <summary>
+        /// set a cell to a double
+        /// </summary>
+        /// <param name="name">the name of the cell (assumed to be valid)</param>
+        /// <param name="number">the double value to store</param>
+        /// <returns></returns>
         protected override IList<string> SetCellContents(string name, double number)
         {
             graph.ReplaceDependents(name, []);
@@ -231,6 +261,12 @@ namespace SS
             return [.. toDo];
         }
 
+        /// <summary>
+        /// constructor for a new unsaved spreadsheet
+        /// </summary>
+        /// <param name="isValid">determines if a var is valid</param>
+        /// <param name="normalize">normalizes the cell names</param>
+        /// <param name="version">the version of this spreadsheet</param>
         public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version)
             : base(isValid, normalize, version)
         {
@@ -246,8 +282,18 @@ namespace SS
             Changed = true;
         }
 
+        /// <summary>
+        /// a constructor with no parameters that puts default values in
+        /// </summary>
         public Spreadsheet() : base((_) => true, (s) => s, "1") { Changed = true; }
 
+        /// <summary>
+        /// a constructor that reads from a file and stores it in this spreadsheet
+        /// </summary>
+        /// <param name="path">path to the file</param>
+        /// <param name="isValid">checks if var is valid</param>
+        /// <param name="normalize">normalize name of var</param>
+        /// <param name="version">the version string</param>
         public Spreadsheet(string path, Func<string, bool> isValid, Func<string, string> normalize, string version)
             : base(isValid, normalize, version)
         {
@@ -308,9 +354,20 @@ namespace SS
             protected set => _changed = value;
         }
 
+        /// <summary>
+        /// get all the cells youve populated
+        /// </summary>
+        /// <inheritdoc/>
+        /// <returns></returns>
         public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.AsEnumerable();
 
-
+        /// <summary>
+        /// get the string version from the xml file with the given path
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="filename">the file to check</param>
+        /// <returns>the string it found</returns>
+        /// <exception cref="SpreadsheetReadWriteException">if something goes wrong with reading</exception>
         public override string GetSavedVersion(string filename)
         {
             try
@@ -335,6 +392,12 @@ namespace SS
             throw new SpreadsheetReadWriteException("Read failed");
         }
 
+        /// <summary>
+        /// saves a file to a path
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="filename"></param>
+        /// <exception cref="SpreadsheetReadWriteException">if the file cant be saved for some reason</exception>
         public override void Save(string filename)
         {
             try
@@ -349,6 +412,11 @@ namespace SS
             Changed = false;
         }
 
+        /// <summary>
+        /// gets xml string version of this spreedsheet
+        /// </summary>
+        /// <inheritdoc/>
+        /// <returns></returns>
         public override string GetXML()
         {
             StringWriter stringWriter = new();
@@ -358,20 +426,40 @@ namespace SS
         }
 
 
-
+        /// <summary>
+        /// tries to get a cell value
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="name">the cell name to try to get a value from</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidNameException">if the name is a bad name</exception>
         public override object GetCellValue(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             return cells.TryGetValue(name, out ICell? cell) ? cell.Value : "";
         }
 
+        /// <summary>
+        /// tries to get a cell contents
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="name">the cell name to try to get a contents from</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidNameException">if the name is a bad name</exception>
         public override object GetCellContents(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             return cells.TryGetValue(name, out ICell? value) ? value.Contents(forSave: false) : "";
         }
 
-
+        /// <summary>
+        /// set the content of the cell and return recusive deps
+        /// </summary>
+        /// <inheritdoc/>
+        /// <param name="name">name of cell to set</param>
+        /// <param name="content">content to set the cell to</param>
+        /// <returns>the dependees of this cell</returns>
+        /// <exception cref="InvalidNameException">if the cell name is not a good name</exception>
         public override IList<string> SetContentsOfCell(string name, string content)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();

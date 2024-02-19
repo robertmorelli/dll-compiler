@@ -25,7 +25,7 @@ namespace SpreadsheetTests
         [TestMethod]
         public void BenchmarkLongChains()
         {
-            Spreadsheet sheet = new((_)=>true, (s)=>s,"1");
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
             for (int i = 0; i < 70; i++)
             {
                 sheet.SetContentsOfCell("a" + i, "1");
@@ -70,7 +70,7 @@ namespace SpreadsheetTests
             //Assert.AreEqual("1", sheet.GetSavedVersion("AllContentTypes.xml"));
         }
 
-        [TestMethod,ExpectedException(typeof(InvalidNameException))]
+        [TestMethod, ExpectedException(typeof(InvalidNameException))]
         public void InvalidGetName()
         {
             Spreadsheet sheet = new((_) => true, (s) => s, "1");
@@ -149,7 +149,7 @@ namespace SpreadsheetTests
             sheet.SetContentsOfCell("a1", "hi");
             sheet.Save("SaveREtreive");
             Console.WriteLine(sheet.GetSavedVersion("SaveREtreive"));
-            Spreadsheet sheet2 = new("SaveREtreive",(_) => true, (s) => s, "1");
+            Spreadsheet sheet2 = new("SaveREtreive", (_) => true, (s) => s, "1");
             Console.WriteLine(sheet.GetCellContents("a1"));
         }
 
