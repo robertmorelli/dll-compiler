@@ -157,7 +157,7 @@ namespace SpreadsheetTests
         public void SavedVersionFailure()
         {
             Spreadsheet sheet = new();
-            sheet.Save("SavedVersionFailure");
+            sheet.GetSavedVersion("SavedVersionFailure;lkdfgj;adklfjg;slkdfjg;lskdfjg;klsdjfg;klsjdf;klgjsdf;klg");
         }
 
         [TestMethod]
