@@ -269,7 +269,26 @@ namespace SS
 
         public override string GetSavedVersion(string filename)
         {
-            return "1";
+            try
+            {
+                using (XmlReader reader = XmlReader.Create(filename))
+                {
+                    while (reader.Read())
+                    {
+                        if (reader.IsStartElement() && reader.Name == "spreadsheet")
+                        {
+                            var maybe = reader.GetAttribute("version");
+                            if(maybe?.GetType() == typeof(string)) return maybe;
+                            else throw new SpreadsheetReadWriteException("Read failed");
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                throw new SpreadsheetReadWriteException("Read failed");
+            }
+            throw new SpreadsheetReadWriteException("Read failed");
         }
 
         public override void Save(string filename)
@@ -294,7 +313,7 @@ namespace SS
             return stringWriter.ToString();
         }
 
-        
+
 
         public override object GetCellValue(string name)
         {

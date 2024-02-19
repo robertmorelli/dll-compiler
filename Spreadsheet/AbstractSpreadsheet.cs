@@ -404,7 +404,16 @@ namespace SS
         /// <summary>
         /// A helper for the GetCellsToRecalculate method.
         /// 
-        ///   -- You should fully comment what is going on below using XML tags as appropriate --
+        /// This implements both a dfs for cycles and also a recursive exhaustive search for
+        /// all dependents of name
+        /// this is optimized so clipping already visited branches are not revisited
+        /// this function also does some unnecessary recalculations 
+        /// `else if (!visited.Contains(n))`
+        /// happens right before visit is called and `visited.Add(name);`
+        /// which has a return value exactly equal to `!visited.Contains(n)`
+        /// 
+        /// Overall a poor and confusing implementation of a tree ordering component
+        /// This would not pass a code review for sure
         /// </summary>
         private void Visit(String start, String name, ISet<String> visited, LinkedList<String> changed)
         {
