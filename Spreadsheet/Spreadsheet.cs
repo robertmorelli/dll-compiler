@@ -251,7 +251,51 @@ namespace SS
         public Spreadsheet(string path, Func<string, bool> isValid, Func<string, string> normalize, string version)
             : base(isValid, normalize, version)
         {
+            using (XmlReader reader = XmlReader.Create(path))
+            {
+                while (reader.Read())
+                {
+                    if (reader.IsStartElement() && reader.Name == "cell")
+                    {
+                        string name = null;
+                        string content = null;
 
+                        while (reader.Read())
+                        {
+                            if (reader.IsStartElement())
+                            {
+                                switch (reader.Name)
+                                {
+                                    case "name":
+                                        if (reader.Read())
+                                        {
+                                            name = reader.Value.Trim();
+                                        }
+                                        break;
+                                    case "contents":
+                                        if (reader.Read())
+                                        {
+                                            content = reader.Value.Trim();
+                                        }
+                                        break;
+                                }
+                            }
+                            else if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "cell")
+                            {
+                                break;
+                            }
+                        }
+
+                        if (name != null)
+                        {
+                            if (content != null)
+                            {
+                                SetContentsOfCell(name, content);
+                            }
+                        }
+                    }
+                }
+            }
 
 
             Changed = false;

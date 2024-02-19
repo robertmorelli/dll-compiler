@@ -143,6 +143,24 @@ namespace SpreadsheetTests
         }
 
         [TestMethod]
+        public void SaveREtreive()
+        {
+            Spreadsheet sheet = new((_) => true, (s) => s, "1");
+            sheet.SetContentsOfCell("a1", "hi");
+            sheet.Save("SaveREtreive");
+            Console.WriteLine(sheet.GetSavedVersion("SaveREtreive"));
+            Spreadsheet sheet2 = new("SaveREtreive",(_) => true, (s) => s, "1");
+            Console.WriteLine(sheet.GetCellContents("a1"));
+        }
+
+        [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]
+        public void SavedVersionFailure()
+        {
+            Spreadsheet sheet = new();
+            sheet.Save("SavedVersionFailure");
+        }
+
+        [TestMethod]
         public void FourValueContructor()
         {
             var sheet = new Spreadsheet();
@@ -161,6 +179,7 @@ namespace SpreadsheetTests
         {
             var sheet = new Spreadsheet();
             sheet.SetContentsOfCell("a1", "hi");
+            sheet.GetCellValue("a1");
             Assert.IsTrue(sheet.Changed);
         }
     }
