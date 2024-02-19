@@ -220,12 +220,25 @@ namespace SS
             {
                 graph.RemoveDependency("a1", "a1");
             }
+            Changed = true;
         }
 
+        public Spreadsheet() : base((_) => true, (s) => s, "1") { Changed = true; }
+
+        public Spreadsheet(string path, Func<string, bool> isValid, Func<string, string> normalize, string version)
+            : base(isValid, normalize, version)
+        {
+
+
+
+            Changed = false;
+        }
+
+        protected bool _changed = false;
         public override bool Changed
         {
-            get => throw new NotImplementedException();
-            protected set => throw new NotImplementedException();
+            get => _changed;
+            protected set => _changed = value;
         }
 
         public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.AsEnumerable();
@@ -241,9 +254,9 @@ namespace SS
                 XmlNodeList nodeList = xmlDoc.GetElementsByTagName("spreadsheet");
                 if (nodeList.Count > 0)
                 {
-                    XmlElement spreadsheetNode = nodeList[0] as XmlElement;
-                    version = spreadsheetNode.GetAttribute("version");
-                    Console.WriteLine("Version: " + version);
+                    //XmlElement spreadsheetNode = nodeList.Item(0);
+                    //version = spreadsheetNode.GetAttribute("version");
+                    //Console.WriteLine("Version: " + version);
                 }
                 else
                 {
@@ -254,7 +267,7 @@ namespace SS
             {
                 throw new SpreadsheetReadWriteException("Read Version failed");
             }
-            return version;
+            return "1";
         }
 
         public override void Save(string filename)
@@ -268,6 +281,7 @@ namespace SS
             {
                 throw new SpreadsheetReadWriteException("Save failed");
             }
+            Changed = false;
         }
 
         public override string GetXML()

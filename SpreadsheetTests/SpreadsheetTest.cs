@@ -141,5 +141,19 @@ namespace SpreadsheetTests
             Spreadsheet sheet = new((_) => true, (s) => s, "1");
             sheet.Save("");
         }
+
+        [TestMethod]
+        public void FourValueContructor()
+        {
+            var sheet = new Spreadsheet((_) => true, (s) => s, "1");
+            for (int i = 0; i < 70; i++)
+            {
+                sheet.SetContentsOfCell("a" + i, "1");
+                sheet.GetCellContents("a0");
+                sheet.SetContentsOfCell("a" + i, "=a" + (i + 1));
+            }
+            sheet.Save("FourValueContructor");
+            var sheet2 = new Spreadsheet("FourValueContructor", (_) => true, (s) => s, "1");
+        }
     }
 }
