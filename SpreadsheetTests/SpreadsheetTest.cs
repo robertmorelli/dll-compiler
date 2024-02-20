@@ -29,8 +29,32 @@ namespace SpreadsheetTests
             sheet.SetContentsOfCell("a1", "2");
             sheet.SetContentsOfCell("a2", "3");
             sheet.SetContentsOfCell("a3", "4");
-            for (int i = 2; i < 100_000; i++)
-                sheet.SetContentsOfCell("a" + i, "=a" + (i - 1) + " + a" + (i - 2) + " * a" + (i - 3) + " - a" + (i - 4));
+            sheet.SetContentsOfCell("a4", "1");
+            for (int i = 1_000; i > 4; i--)
+                sheet.SetContentsOfCell("a" + i,
+                    string.Format(
+                         "=(25 * 50 - 100 + 200 / 400) + a{0} * a{1} - a{2} + a{3} / a{4}",
+                         i - 1, i - 2, i - 3, i - 4, i - 5
+                        )
+                    );
+        }
+
+        [TestMethod]
+        public void BenchmarkLongChainsBackwards()
+        {
+            Spreadsheet sheet = new();
+            sheet.SetContentsOfCell("a0", "1");
+            sheet.SetContentsOfCell("a1", "2");
+            sheet.SetContentsOfCell("a2", "3");
+            sheet.SetContentsOfCell("a3", "4");
+            sheet.SetContentsOfCell("a4", "1");
+            for (int i = 5; i < 100_000; i++)
+                sheet.SetContentsOfCell("a" + i,
+                    string.Format(
+                         "=(25 * 50 - 100 + 200 / 400) + a{0} * a{1} - a{2} + a{3} / a{4}",
+                         i - 1, i - 2, i - 3, i - 4, i - 5
+                        )
+                    );
         }
 
         [TestMethod, ExpectedException(typeof(CircularException))]

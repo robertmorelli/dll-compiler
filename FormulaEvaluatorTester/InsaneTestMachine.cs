@@ -17,11 +17,8 @@
 /// </summary>
 using FormulaEvaluator;
 using SpreadsheetTests;
-using SpreadsheetUtilities;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using static FormulaEvaluator.Evaluator;
-using static SpreadsheetUtilities.Utility;
 
 
 namespace FormulaEvaluatorTester

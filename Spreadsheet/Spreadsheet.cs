@@ -17,6 +17,7 @@
 
 
 using SpreadsheetUtilities;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -28,7 +29,7 @@ namespace SS
     /// </summary>
     internal partial class Utility
     {
-        [GeneratedRegex(@"^[a-zA-Z]+[a-zA-Z\d]*$", options:
+        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z\d]*$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
         private static partial Regex _validName();
@@ -138,6 +139,15 @@ namespace SS
             private object _currentValue = new FormulaError("Never Calculated Struct");
             public void Compute()
             {
+                var vars = _content.GetVariables();
+                foreach (var dep in vars)
+                {
+                    if (!spreadsheet.cells.TryGetValue(dep, out ICell? cell) || cell.Value.GetType() != typeof(double))
+                    {
+                        _currentValue = new FormulaError("Dependency Not Valid");
+                        return;
+                    }
+                }
                 try
                 {
                     _currentValue = _content.Evaluate(Lookup);
@@ -187,6 +197,8 @@ namespace SS
             xmlWriter.WriteEndDocument();
         }
 
+
+        protected static readonly Stack<IRecompStackFrame> virtualCallStack = new();
         /// <summary>
         /// virtual stack implementation of the base.GetCellsToRecalculate
         /// ~23% better performance but also matches the (undefined behavior based)
@@ -199,41 +211,41 @@ namespace SS
         /// <returns></returns>
         new protected IEnumerable<string> GetCellsToRecalculate(string start)
         {
-            // c# does not support tail call optimizations
-            Stack<IRecompStackFrame> virtualCallStack = new();
-
-            //same as original
             HashSet<string> visited = [];
-
             string dep;
-
             //obligatory "linked list bad" comment (because linked lists are BAD!)
             //linked list alone causes about a 3rd of the slowdown from the
             //true recursion implementation
             Stack<string> changed = new();
+            // c# does not support tail call optimizations
+
+            //same as original
             //"Call" Visit(start...)
             IRecompStackFrame frame = new() { name = start, firstHalf = true };
-            do
+            lock (virtualCallStack)
             {
-                if (frame.firstHalf)//ret pops either &Visit or &Visit + K
+                do
                 {
-                    visited.Add(frame.name);
-                    frame.firstHalf = false;
-                    virtualCallStack.Push(frame);
-                    foreach (string n in GetDirectDependents(frame.name))
+                    if (frame.firstHalf)//ret pops either &Visit or &Visit + K
                     {
-                        dep = n;
-                        if (!visited.Contains(dep))
+                        visited.Add(frame.name);
+                        frame.firstHalf = false;
+                        virtualCallStack.Push(frame);
+                        foreach (string n in GetDirectDependents(frame.name))
                         {
-                            virtualCallStack.Push(new() { name = dep, firstHalf = true });
+                            dep = n;
+                            if (!visited.Contains(dep))
+                            {
+                                virtualCallStack.Push(new() { name = dep, firstHalf = true });
+                            }
                         }
                     }
-                }
-                else
-                {
-                    changed.Push(frame.name);
-                }
-            } while (virtualCallStack.TryPop(out frame));
+                    else
+                    {
+                        changed.Push(frame.name);
+                    }
+                } while (virtualCallStack.TryPop(out frame));
+            }
             return changed;//.Select(UnPreHash);
         }
 
@@ -251,10 +263,10 @@ namespace SS
             //store only if its not empty
             if (!Utility.IsNothing(text))
             {
-                cells[(name)] = new StringCell(text);
+                cells[name] = new StringCell(text);
                 graph.ReplaceDependents(name, []);
             }
-            return [.. toDo];
+            return toDo.ToList();
         }
 
         /// <summary>
@@ -269,15 +281,17 @@ namespace SS
 
             //if its a new cell do recalulations
             ICell newCell = new DoubleCell(number);
-            if (!(cells.TryGetValue((name), out ICell? oldCell) && (newCell == oldCell)))
+            if (!(cells.TryGetValue(name, out ICell? oldCell) && (newCell == oldCell)))
             {
-                cells[(name)] = newCell;
+                cells[name] = newCell;
                 graph.ReplaceDependents(name, []);
-                foreach (var n in toDo)
-                    if (cells.TryGetValue((n), out ICell? cell))
-                        cell.Compute();
+                newCell.Compute();
+                if (newCell.Value.GetType() == typeof(double))
+                    foreach (var n in toDo)
+                        if (cells.TryGetValue(n, out ICell? cell))
+                            cell.Compute();
             }
-            return [.. toDo];
+            return toDo.ToList();
         }
 
         protected override IList<string> SetCellContents(string name, Formula formula)
@@ -291,15 +305,17 @@ namespace SS
 
             //if its a new cell do recalculations
             ICell newCell = new FormulaCell(formula, this);
-            if (!(cells.TryGetValue((name), out ICell? oldCell) && (newCell == oldCell)))
+            if (!(cells.TryGetValue(name, out ICell? oldCell) && (newCell == oldCell)))
             {
-                cells[(name)] = newCell;
+                cells[name] = newCell;
                 graph.ReplaceDependents(name, formula.GetVariables());
-                foreach (var n in toDo)
-                    if (cells.TryGetValue(n, out ICell? cell))
-                        cell.Compute();
+                newCell.Compute();
+                if (newCell.Value.GetType() == typeof(double))
+                    foreach (var n in toDo)
+                        if (cells.TryGetValue(n, out ICell? cell))
+                            cell.Compute();
             }
-            return [.. toDo];
+            return toDo.ToList();
         }
 
         /// <summary>

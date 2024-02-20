@@ -37,8 +37,8 @@ namespace SpreadsheetUtilities
             RegexOptions.NonBacktracking;
 
         [GeneratedRegex(@"^\s*$", options: ro)] public static partial Regex isWhiteSpaceRegex();
-        [GeneratedRegex(@"^[a-zA-Z]+[a-zA-Z\d]*$", options: ro)] public static partial Regex isVariableRegex();
-        [GeneratedRegex(@"\b|([)(\+\-*/])", options: ro)] public static partial Regex bounderies();
+        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z\d]*$", options: ro)] public static partial Regex isVariableRegex();
+        [GeneratedRegex(@"\b|([\-)*(+/])", options: ro)] public static partial Regex bounderies();
     }
 
     /// <summary>
