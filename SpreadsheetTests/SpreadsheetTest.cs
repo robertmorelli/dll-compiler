@@ -27,7 +27,10 @@ namespace SpreadsheetTests
             Spreadsheet sheet = new();
             sheet.SetContentsOfCell("a0", "1");
             sheet.SetContentsOfCell("a1", "2");
-            for (int i = 2; i < 150_000; i++) sheet.SetContentsOfCell("a" + i, "=a" + (i - 1) + " + a" + (i - 2) );
+            sheet.SetContentsOfCell("a2", "3");
+            sheet.SetContentsOfCell("a3", "4");
+            for (int i = 2; i < 100_000; i++)
+                sheet.SetContentsOfCell("a" + i, "=a" + (i - 1) + " + a" + (i - 2) + " * a" + (i - 3) + " - a" + (i - 4));
         }
 
         [TestMethod, ExpectedException(typeof(CircularException))]

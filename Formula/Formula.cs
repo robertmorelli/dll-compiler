@@ -21,40 +21,12 @@
 /// </summary>
 
 using System.Text.RegularExpressions;
-using static SpreadsheetUtilities.Formula;
 
 namespace SpreadsheetUtilities
 {
 
     public static partial class Utility
     {
-        // Patterns for individual tokens
-        const string lpPattern = @"\(";
-        const string rpPattern = @"\)";
-        const string opPattern = @"(?: [\+\-*/])";
-        const string varPattern = @"(?: [a-zA-Z]+?[a-zA-Z\d]* )";
-        const string doublePattern = @"(?: (?: \d+?\.\d*? | \d*?\.\d+? | \d+? ) (?: [eE][\+-]?\d+?)?)";
-        const string spacePattern = @"(?: \s+?)";
-        // Overall pattern
-        const string tokenPattern = @"("
-                                    + lpPattern + @"|"
-                                    + rpPattern + @"|"
-                                    + opPattern + @"|"
-                                    + varPattern + @"|"
-                                    + doublePattern + @"|"
-                                    + spacePattern +
-                                    @")";
-        const string whiteLinePattern = @"^(\s*)$";
-        const string intPattern = @"^(\d+)$";
-        const string addativePattern = @"^(\+|-$)";
-        const string addPattern = @"^(\+)$";
-        const string subPattern = @"^(-)$";
-        const string multiplicativePattern = @"^(\*|/)$";
-        const string multPattern = @"^(\*)$";
-        const string divPattern = @"^(/)$";
-        const string anyOneLinePattern = @"^(.*)$";
-        const string isZerosPattern = @"^(0+)$";
-        const string doubleAlonePattern = @"^(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: [eE][\+-]?\d+)?$";
 
         //speed up regex performance
         //no backtracking makes this a DFA instead of NFA
@@ -64,22 +36,9 @@ namespace SpreadsheetUtilities
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking;
 
-        [GeneratedRegex(doubleAlonePattern, options: ro)] public static partial Regex isDouble();
-        [GeneratedRegex(opPattern, options: ro)] public static partial Regex isOperation();
-        [GeneratedRegex(tokenPattern, options: ro)] public static partial Regex findTokenRegex();
-        [GeneratedRegex(whiteLinePattern, options: ro)] public static partial Regex isWhiteSpaceRegex();
-        [GeneratedRegex(intPattern, options: ro)] public static partial Regex isIntRegex();
-        [GeneratedRegex(varPattern, options: ro)] public static partial Regex isVariableRegex();
-        [GeneratedRegex(addativePattern, options: ro)] public static partial Regex isAddativeRegex();
-        [GeneratedRegex(addPattern, options: ro)] public static partial Regex isAddRegex();
-        [GeneratedRegex(subPattern, options: ro)] public static partial Regex isSubRegex();
-        [GeneratedRegex(multiplicativePattern, options: ro)] public static partial Regex isMultiplicativeRegex();
-        [GeneratedRegex(multPattern, options: ro)] public static partial Regex isMultRegex();
-        [GeneratedRegex(divPattern, options: ro)] public static partial Regex isDivRegex();
-        [GeneratedRegex(lpPattern, options: ro)] public static partial Regex isOpeningParenRegex();
-        [GeneratedRegex(rpPattern, options: ro)] public static partial Regex isClosingParenRegex();
-        [GeneratedRegex(anyOneLinePattern, options: ro)] public static partial Regex isAnythingRegex();
-        [GeneratedRegex(isZerosPattern, options: ro)] public static partial Regex isZeros();
+        [GeneratedRegex(@"^\s*$", options: ro)] public static partial Regex isWhiteSpaceRegex();
+        [GeneratedRegex(@"^[a-zA-Z]+[a-zA-Z\d]*$", options: ro)] public static partial Regex isVariableRegex();
+        [GeneratedRegex(@"\b|([)(\+\-*/])", options: ro)] public static partial Regex bounderies();
     }
 
     /// <summary>
@@ -159,6 +118,7 @@ namespace SpreadsheetUtilities
             tokenProcessor[TokenType.val](new Token("1"));
 
             ExecutableAst = valueStack.Pop();
+            if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("");
             ThrowDBZEveryTime = ExecutableAst.IsDBZConst();
             ExecutableAst = ExecutableAst.Optmizied();
             VarTokens = Tokens
@@ -166,7 +126,6 @@ namespace SpreadsheetUtilities
                 .Select((token) => token.primativeString)
                 .Distinct()
                 .ToArray();
-            if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("");
         }
 
         /// <summary>
@@ -500,12 +459,12 @@ namespace SpreadsheetUtilities
                     else throw new FormulaFormatException("die exception");
                 }
                 else primativeString = primative;
-                isDiv = Utility.isDivRegex().IsMatch(primative);
-                isMult = Utility.isMultRegex().IsMatch(primative);
-                isAdd = Utility.isAddRegex().IsMatch(primative);
-                isSub = Utility.isSubRegex().IsMatch(primative);
-                isLParens = Utility.isOpeningParenRegex().IsMatch(primative);
-                isRParens = Utility.isClosingParenRegex().IsMatch(primative);
+                isDiv = primative.StartsWith('/');
+                isMult = primative.StartsWith('*');
+                isAdd = primative.StartsWith('+');
+                isSub = primative.StartsWith('-');
+                isLParens = primative.StartsWith('(');
+                isRParens = primative.StartsWith(')');
                 if (!(isAdd || isSub || IsMultiplicative || IsValue || isLParens || isRParens))
                     throw new FormulaFormatException("die exception");
             }
@@ -537,7 +496,7 @@ namespace SpreadsheetUtilities
         {
             List<Token> ret = [];
             //slow plz fix
-            foreach (var s in Utility.findTokenRegex().Split(formula))
+            foreach (var s in Utility.bounderies().Split(formula))
                 if (!Utility.isWhiteSpaceRegex().IsMatch(s))
                     ret.Add(new(s, normalize, isValid));
             return ret;

@@ -28,7 +28,7 @@ namespace SS
     /// </summary>
     internal partial class Utility
     {
-        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9]{0,10}$", options:
+        [GeneratedRegex(@"^[a-zA-Z]+[a-zA-Z\d]*$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
         private static partial Regex _validName();
