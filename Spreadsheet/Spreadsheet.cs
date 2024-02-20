@@ -17,8 +17,11 @@
 
 
 using SpreadsheetUtilities;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace SS
 {
@@ -28,7 +31,7 @@ namespace SS
     /// </summary>
     internal partial class Utility
     {
-        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9]*$", options:
+        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z0-9]{0,10}$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
         private static partial Regex _validName();
@@ -65,6 +68,12 @@ namespace SS
         //(which is either at the start of the function of halfway through)
         //name is a string stack variable
         protected struct IRecompStackFrame { public string name; public bool firstHalf; };
+
+
+        // whether the spreadsheet has changed
+        protected bool _changed = false;
+
+
         //graph and its utility function
         protected readonly DependencyGraph graph = new();
         /// <summary>
@@ -75,16 +84,23 @@ namespace SS
         protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
 
         //the cells with cell objects inside
-        protected readonly Dictionary<string, ICell> cells = [];
+        protected readonly Dictionary<ulong, ICell> cells = [];
+        //we know every cell name is a valid (base64) number and the comiler doesnt
+        //alsomagic number from: ceil(lg(ulong.Max) / lg(64)) == 11
+        //if you are using keys that can encode larger than ulong space then you are getting collisions anyway
+        static protected ulong PreHash(string s) => BitConverter.ToUInt64(Encoding.ASCII.GetBytes(s.PadLeft(11, '0')), 0);
+        //undo the above function
+        static protected string UnPreHash(ulong s) => new string(Encoding.ASCII.GetChars(BitConverter.GetBytes(s))).TrimStart('0');
 
         /// <summary>
         /// cell interface for cell structs
         /// </summary>
-        protected interface ICell
+        protected interface ICell : IEquatable<ICell>
         {
             public object Value { get; }
             public object Contents(bool forSave);
             public void Compute();
+            public object CompItem { get; }
         }
 
         /// <summary>
@@ -96,6 +112,9 @@ namespace SS
             public readonly object Value => value;
             public readonly object Contents(bool forSave) => value;
             public void Compute() { }
+            public object CompItem => Value;
+            public bool Equals(ICell? other) =>
+                (other?.GetType() == GetType()) && (other.CompItem == CompItem);
 
             private readonly double value = d;
         }
@@ -109,6 +128,9 @@ namespace SS
             public readonly object Value => value;
             public readonly object Contents(bool forSave) => value;
             public void Compute() { }
+            public object CompItem => Value;
+            public bool Equals(ICell? other) =>
+                (other?.GetType() == GetType()) && (other.CompItem == CompItem);
 
             private readonly string value = s;
         }
@@ -120,23 +142,27 @@ namespace SS
         /// <param name="s">a refernce to the spreadsheet to access other cells</param>
         protected struct FormulaCell(Formula f, Spreadsheet s) : ICell
         {
-            private readonly Formula _content = f;
-            private readonly Spreadsheet spreadsheet = s;
             public readonly object Contents(bool forSave) => (forSave ? "=" : "") + _content;
             public readonly object Value => _currentValue;
             private object _currentValue = new FormulaError("Never Calculated Struct");
             public void Compute()
             {
-                Dictionary<string, double> lookup = [];
-                double Lookup(string s) => lookup[s];
-                foreach (string dep in _content.GetVariables())
-                    if (!(spreadsheet.cells.TryGetValue(dep, out ICell? cell) &&
-                        cell.Value.GetType() == typeof(double)))
-                        _currentValue = new FormulaError("Dependency Not Valid");
-                    else
-                        lookup[dep] = (double)cell.Value;
-                _currentValue = _content.Evaluate(Lookup);
+                try
+                {
+                    _currentValue = _content.Evaluate(Lookup);
+                }
+                catch
+                {
+                    _currentValue = new FormulaError("Dependency Not Valid");
+                }
             }
+            public readonly object CompItem => _content;
+            public readonly bool Equals(ICell? other) =>
+                (other?.GetType() == GetType()) && (other.CompItem == CompItem);
+
+            private readonly Formula _content = f;
+            private readonly Spreadsheet spreadsheet = s;
+            private readonly double Lookup(string s) => (double)spreadsheet.cells[PreHash(s)].Value;
         }
 
 
@@ -153,7 +179,7 @@ namespace SS
             {
                 xmlWriter.WriteStartElement("cell");//<cell>
                 xmlWriter.WriteStartElement("name");//<name>
-                xmlWriter.WriteValue(name);//[name]
+                xmlWriter.WriteValue(UnPreHash(name));//[name]
                 xmlWriter.WriteEndElement();//</name>
                 xmlWriter.WriteStartElement("contents");//contents>
                 xmlWriter.WriteValue(cell.Contents(forSave: true));//[contents]
@@ -177,12 +203,6 @@ namespace SS
         /// <exception cref="CircularException">if the dependencies are circular</exception>
         new protected Stack<string> GetCellsToRecalculate(string start)
         {
-            //REMEMBER TO REMOVE CALL TO TURD TIER IMPLEMENTATION AFTER TURNING IN ASSIGNMENT
-            //AND REPLACE THIS FUNCTION WITH FAST IMPLEMENTATIOIN
-            try { base.GetCellsToRecalculate(start); } catch { }
-
-
-
             // c# does not support tail call optimizations
             Stack<IRecompStackFrame> virtualCallStack = new();
 
@@ -229,10 +249,15 @@ namespace SS
         /// <returns></returns>
         protected override IList<string> SetCellContents(string name, string text)
         {
-            if (Utility.IsNothing(text)) return [];
-            graph.ReplaceDependents(name, []);
+            //should be empty but whatever
             var toDo = GetCellsToRecalculate(name);
-            cells[name] = new StringCell(text);
+
+            //store only if its not empty
+            if (!Utility.IsNothing(text))
+            {
+                cells[PreHash(name)] = new StringCell(text);
+                graph.ReplaceDependents(name, []);
+            }
             return [.. toDo];
         }
 
@@ -244,20 +269,40 @@ namespace SS
         /// <returns></returns>
         protected override IList<string> SetCellContents(string name, double number)
         {
-            graph.ReplaceDependents(name, []);
             var toDo = GetCellsToRecalculate(name);
-            cells[name] = new DoubleCell(number);
+
+            //if its a new cell do recalulations
+            ICell newCell = new DoubleCell(number);
+            if (!(cells.TryGetValue(PreHash(name), out ICell? oldCell) && (newCell == oldCell)))
+            {
+                cells[PreHash(name)] = newCell;
+                graph.ReplaceDependents(name, []);
+                foreach (var n in toDo)
+                    if (cells.TryGetValue(PreHash(n), out ICell? cell))
+                        cell.Compute();
+            }
             return [.. toDo];
         }
 
         protected override IList<string> SetCellContents(string name, Formula formula)
         {
+            //check if depends on its own vars
             if (formula.GetVariables().Contains(name)) throw new CircularException();
-            var toDo = GetCellsToRecalculate(name);//can throw circular
-            if (toDo.Intersect(formula.GetVariables()).Any())
-                throw new CircularException();
-            cells[name] = new FormulaCell(formula, this);
-            graph.ReplaceDependents(name, formula.GetVariables());
+            //get recursive deps
+            var toDo = GetCellsToRecalculate(name);
+            //check if the recursive deps include its own deps
+            if (toDo.Intersect(formula.GetVariables()).Any()) throw new CircularException();
+
+            //if its a new cell do recalculations
+            ICell newCell = new FormulaCell(formula, this);
+            if (!(cells.TryGetValue(PreHash(name), out ICell? oldCell) && (newCell == oldCell)))
+            {
+                cells[PreHash(name)] = newCell;
+                graph.ReplaceDependents(name, formula.GetVariables());
+                foreach (var n in toDo)
+                    if (cells.TryGetValue(PreHash(n), out ICell? cell))
+                        cell.Compute();
+            }
             return [.. toDo];
         }
 
@@ -268,19 +313,7 @@ namespace SS
         /// <param name="normalize">normalizes the cell names</param>
         /// <param name="version">the version of this spreadsheet</param>
         public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version)
-            : base(isValid, normalize, version)
-        {
-            try
-            {
-                graph.AddDependency("a1", "a1");
-                base.GetCellsToRecalculate("a1");
-            }
-            catch (Exception)
-            {
-                graph.RemoveDependency("a1", "a1");
-            }
-            Changed = true;
-        }
+            : base(isValid, normalize, version) { Changed = true; }
 
         /// <summary>
         /// a constructor with no parameters that puts default values in
@@ -297,57 +330,44 @@ namespace SS
         public Spreadsheet(string path, Func<string, bool> isValid, Func<string, string> normalize, string version)
             : base(isValid, normalize, version)
         {
-            using (XmlReader reader = XmlReader.Create(path))
+            Changed = false;
+            string name;
+            string content;
+            try
             {
+                using var reader = XmlReader.Create(path);
                 while (reader.Read())
                 {
                     if (reader.IsStartElement() && reader.Name == "cell")
                     {
-                        string name = null;
-                        string content = null;
-
+                        name = "";
+                        content = "";
                         while (reader.Read())
-                        {
-                            if (reader.IsStartElement())
+                            switch (reader.NodeType)
                             {
-                                switch (reader.Name)
-                                {
-                                    case "name":
-                                        if (reader.Read())
-                                        {
-                                            name = reader.Value.Trim();
-                                        }
-                                        break;
-                                    case "contents":
-                                        if (reader.Read())
-                                        {
-                                            content = reader.Value.Trim();
-                                        }
-                                        break;
-                                }
+                                case XmlNodeType.EndElement:
+                                    if (reader.Name == "cell") goto exitloop; //AAAAAH CALL THE POILCE ITS A GOTO
+                                    break;
+                                case XmlNodeType.Element:
+                                    if (reader.Name == "name" && reader.Read())
+                                        name = reader.Value.Trim();
+                                    else if (reader.Name == "contents" && reader.Read())
+                                        content = reader.Value.Trim();
+                                    break;
+                                default:
+                                    continue;
                             }
-                            else if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "cell")
-                            {
-                                break;
-                            }
-                        }
-
-                        if (name != null)
-                        {
-                            if (content != null)
-                            {
-                                SetContentsOfCell(name, content);
-                            }
-                        }
+                        exitloop:
+                        if (!name.Equals("") && !content.Equals("")) SetContentsOfCell(name, content);
                     }
                 }
             }
-
-
-            Changed = false;
+            catch
+            {
+                throw new SpreadsheetReadWriteException("Read failed");
+            }
         }
 
-        protected bool _changed = false;
         public override bool Changed
         {
             get => _changed;
@@ -359,7 +379,7 @@ namespace SS
         /// </summary>
         /// <inheritdoc/>
         /// <returns></returns>
-        public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.AsEnumerable();
+        public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.Select(UnPreHash);
 
         /// <summary>
         /// get the string version from the xml file with the given path
@@ -370,20 +390,14 @@ namespace SS
         /// <exception cref="SpreadsheetReadWriteException">if something goes wrong with reading</exception>
         public override string GetSavedVersion(string filename)
         {
+            string? maybeVersion;
             try
             {
-                using (XmlReader reader = XmlReader.Create(filename))
-                {
-                    while (reader.Read())
-                    {
-                        if (reader.IsStartElement() && reader.Name == "spreadsheet")
-                        {
-                            var maybe = reader.GetAttribute("version");
-                            if(maybe?.GetType() == typeof(string)) return maybe;
-                            else throw new SpreadsheetReadWriteException("Read failed");
-                        }
-                    }
-                }
+                using XmlReader reader = XmlReader.Create(filename);
+                while (reader.Read())
+                    if (reader.IsStartElement() && reader.Name == "spreadsheet" &&
+                        (maybeVersion = reader.GetAttribute("version"))?.GetType() == typeof(string)) return maybeVersion;
+                    else throw new SpreadsheetReadWriteException("Read failed");
             }
             catch
             {
@@ -400,16 +414,16 @@ namespace SS
         /// <exception cref="SpreadsheetReadWriteException">if the file cant be saved for some reason</exception>
         public override void Save(string filename)
         {
+            Changed = false;
             try
             {
-                using XmlWriter xmlWriter = XmlWriter.Create(filename, new() { Indent = true, IndentChars = "  " });
+                using var xmlWriter = XmlWriter.Create(filename, new() { Indent = true, IndentChars = "  " });
                 DoXMLWriting(xmlWriter);
             }
             catch
             {
                 throw new SpreadsheetReadWriteException("Save failed");
             }
-            Changed = false;
         }
 
         /// <summary>
@@ -420,8 +434,7 @@ namespace SS
         public override string GetXML()
         {
             StringWriter stringWriter = new();
-            using XmlWriter xmlWriter = XmlWriter.Create(stringWriter, new() { Indent = true, IndentChars = "  " });
-            DoXMLWriting(xmlWriter);
+            DoXMLWriting(XmlWriter.Create(stringWriter, new() { Indent = true, IndentChars = "  " }));
             return stringWriter.ToString();
         }
 
@@ -436,7 +449,7 @@ namespace SS
         public override object GetCellValue(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            return cells.TryGetValue(name, out ICell? cell) ? cell.Value : "";
+            return cells.TryGetValue(PreHash(name), out ICell? cell) ? cell.Value : "";
         }
 
         /// <summary>
@@ -449,7 +462,7 @@ namespace SS
         public override object GetCellContents(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            return cells.TryGetValue(name, out ICell? value) ? value.Contents(forSave: false) : "";
+            return cells.TryGetValue(PreHash(name), out ICell? value) ? value.Contents(forSave: false) : "";
         }
 
         /// <summary>
@@ -463,17 +476,10 @@ namespace SS
         public override IList<string> SetContentsOfCell(string name, string content)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-
-            IList<string> deps;
-            if (double.TryParse(content, out double d)) deps = SetCellContents(name, d);
-            else if (content.StartsWith('=')) deps = SetCellContents(name, new Formula(content[1..], Normalize, IsValid));
-            else deps = SetCellContents(name, content);
-
-            foreach (var n in deps)
-                if (cells.TryGetValue(n, out ICell? cell))
-                    cell.Compute();
             Changed = true;
-            return deps;
+            return double.TryParse(content, out double d) ? SetCellContents(name, d) :
+                    content.StartsWith('=') ? SetCellContents(name, new Formula(content[1..], Normalize, IsValid)) :
+                    SetCellContents(name, content);
         }
     }
 }
