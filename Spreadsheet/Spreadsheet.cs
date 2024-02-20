@@ -162,7 +162,13 @@ namespace SS
 
             private readonly Formula _content = f;
             private readonly Spreadsheet spreadsheet = s;
-            private readonly double Lookup(string s) => (double)spreadsheet.cells[PreHash(s)].Value;
+            private readonly double Lookup(string s)
+            {
+                ulong index = PreHash(s);
+                ICell cell = spreadsheet.cells[index];
+                double val = (double)cell.Value;
+                return val;
+            }
         }
 
 
