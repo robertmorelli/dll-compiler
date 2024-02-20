@@ -26,7 +26,7 @@ namespace SpreadsheetTests
         public void BenchmarkLongChains()
         {
             Spreadsheet sheet = new((_) => true, (s) => s, "1");
-            for (int i = 0; i < 70; i++)
+            for (int i = 0; i < 70000; i++)
             {
                 sheet.SetContentsOfCell("a" + i, "1");
                 sheet.GetCellContents("a0");

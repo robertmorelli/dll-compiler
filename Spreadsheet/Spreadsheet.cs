@@ -67,7 +67,7 @@ namespace SS
         //firsthalf is a proxy for the return pointer
         //(which is either at the start of the function of halfway through)
         //name is a string stack variable
-        protected struct IRecompStackFrame { public string name; public bool firstHalf; };
+        protected struct IRecompStackFrame { public ulong name; public bool firstHalf; };
 
 
         // whether the spreadsheet has changed
@@ -200,21 +200,22 @@ namespace SS
         /// <inheritdoc/>
         /// <param name="start">start cell</param>
         /// <returns></returns>
-        /// <exception cref="CircularException">if the dependencies are circular</exception>
-        new protected Stack<string> GetCellsToRecalculate(string start)
+        new protected IEnumerable<string> GetCellsToRecalculate(string start)
         {
             // c# does not support tail call optimizations
             Stack<IRecompStackFrame> virtualCallStack = new();
 
             //same as original
-            HashSet<string> visited = [];
+            HashSet<ulong> visited = [];
+
+            ulong dep;
 
             //obligatory "linked list bad" comment (because linked lists are BAD!)
             //linked list alone causes about a 3rd of the slowdown from the
             //true recursion implementation
-            Stack<string> changed = new();
+            Stack<ulong> changed = new();
             //"Call" Visit(start...)
-            IRecompStackFrame frame = new() { name = start, firstHalf = true };
+            IRecompStackFrame frame = new() { name = PreHash(start), firstHalf = true };
             do
             {
                 if (frame.firstHalf)//ret pops either &Visit or &Visit + K
@@ -222,14 +223,12 @@ namespace SS
                     visited.Add(frame.name);
                     frame.firstHalf = false;
                     virtualCallStack.Push(frame);
-                    //to exactly copy behavior this must itterate in reverse
-                    //this passed testStress4 so it should be fine
-                    foreach (string n in GetDirectDependents(frame.name))
+                    foreach (string n in GetDirectDependents(UnPreHash(frame.name)))
                     {
-                        if (!visited.Contains(n))
+                        dep = PreHash(n);
+                        if (!visited.Contains(dep))
                         {
-                            //"Call" Visit(n...)
-                            virtualCallStack.Push(new() { name = n, firstHalf = true });
+                            virtualCallStack.Push(new() { name = dep, firstHalf = true });
                         }
                     }
                 }
@@ -238,7 +237,7 @@ namespace SS
                     changed.Push(frame.name);
                 }
             } while (virtualCallStack.TryPop(out frame));
-            return changed;
+            return changed.Select(UnPreHash);
         }
 
         /// <summary>
