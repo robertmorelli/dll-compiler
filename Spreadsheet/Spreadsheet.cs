@@ -17,11 +17,8 @@
 
 
 using SpreadsheetUtilities;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
-using System.Xml.Linq;
 
 namespace SS
 {
@@ -67,7 +64,7 @@ namespace SS
         //firsthalf is a proxy for the return pointer
         //(which is either at the start of the function of halfway through)
         //name is a string stack variable
-        protected struct IRecompStackFrame { public ulong name; public bool firstHalf; };
+        protected struct IRecompStackFrame { public string name; public bool firstHalf; };
 
 
         // whether the spreadsheet has changed
@@ -84,13 +81,7 @@ namespace SS
         protected override IEnumerable<string> GetDirectDependents(string name) => graph.GetDependees(name);
 
         //the cells with cell objects inside
-        protected readonly Dictionary<ulong, ICell> cells = [];
-        //we know every cell name is a valid (base64) number and the comiler doesnt
-        //alsomagic number from: ceil(lg(ulong.Max) / lg(64)) == 11
-        //if you are using keys that can encode larger than ulong space then you are getting collisions anyway
-        static protected ulong PreHash(string s) => BitConverter.ToUInt64(Encoding.ASCII.GetBytes(s.PadLeft(11, '0')), 0);
-        //undo the above function
-        static protected string UnPreHash(ulong s) => new string(Encoding.ASCII.GetChars(BitConverter.GetBytes(s))).TrimStart('0');
+        protected readonly Dictionary<string, ICell> cells = [];
 
         /// <summary>
         /// cell interface for cell structs
@@ -164,8 +155,8 @@ namespace SS
             private readonly Spreadsheet spreadsheet = s;
             private readonly double Lookup(string s)
             {
-                ulong index = PreHash(s);
-                ICell cell = spreadsheet.cells[index];
+                //ulong index = PreHash(s);
+                ICell cell = spreadsheet.cells[s];
                 double val = (double)cell.Value;
                 return val;
             }
@@ -185,7 +176,7 @@ namespace SS
             {
                 xmlWriter.WriteStartElement("cell");//<cell>
                 xmlWriter.WriteStartElement("name");//<name>
-                xmlWriter.WriteValue(UnPreHash(name));//[name]
+                xmlWriter.WriteValue(name);//[name]
                 xmlWriter.WriteEndElement();//</name>
                 xmlWriter.WriteStartElement("contents");//contents>
                 xmlWriter.WriteValue(cell.Contents(forSave: true));//[contents]
@@ -212,16 +203,16 @@ namespace SS
             Stack<IRecompStackFrame> virtualCallStack = new();
 
             //same as original
-            HashSet<ulong> visited = [];
+            HashSet<string> visited = [];
 
-            ulong dep;
+            string dep;
 
             //obligatory "linked list bad" comment (because linked lists are BAD!)
             //linked list alone causes about a 3rd of the slowdown from the
             //true recursion implementation
-            Stack<ulong> changed = new();
+            Stack<string> changed = new();
             //"Call" Visit(start...)
-            IRecompStackFrame frame = new() { name = PreHash(start), firstHalf = true };
+            IRecompStackFrame frame = new() { name = start, firstHalf = true };
             do
             {
                 if (frame.firstHalf)//ret pops either &Visit or &Visit + K
@@ -229,9 +220,9 @@ namespace SS
                     visited.Add(frame.name);
                     frame.firstHalf = false;
                     virtualCallStack.Push(frame);
-                    foreach (string n in GetDirectDependents(UnPreHash(frame.name)))
+                    foreach (string n in GetDirectDependents(frame.name))
                     {
-                        dep = PreHash(n);
+                        dep = n;
                         if (!visited.Contains(dep))
                         {
                             virtualCallStack.Push(new() { name = dep, firstHalf = true });
@@ -243,7 +234,7 @@ namespace SS
                     changed.Push(frame.name);
                 }
             } while (virtualCallStack.TryPop(out frame));
-            return changed.Select(UnPreHash);
+            return changed;//.Select(UnPreHash);
         }
 
         /// <summary>
@@ -260,7 +251,7 @@ namespace SS
             //store only if its not empty
             if (!Utility.IsNothing(text))
             {
-                cells[PreHash(name)] = new StringCell(text);
+                cells[(name)] = new StringCell(text);
                 graph.ReplaceDependents(name, []);
             }
             return [.. toDo];
@@ -278,12 +269,12 @@ namespace SS
 
             //if its a new cell do recalulations
             ICell newCell = new DoubleCell(number);
-            if (!(cells.TryGetValue(PreHash(name), out ICell? oldCell) && (newCell == oldCell)))
+            if (!(cells.TryGetValue((name), out ICell? oldCell) && (newCell == oldCell)))
             {
-                cells[PreHash(name)] = newCell;
+                cells[(name)] = newCell;
                 graph.ReplaceDependents(name, []);
                 foreach (var n in toDo)
-                    if (cells.TryGetValue(PreHash(n), out ICell? cell))
+                    if (cells.TryGetValue((n), out ICell? cell))
                         cell.Compute();
             }
             return [.. toDo];
@@ -300,12 +291,12 @@ namespace SS
 
             //if its a new cell do recalculations
             ICell newCell = new FormulaCell(formula, this);
-            if (!(cells.TryGetValue(PreHash(name), out ICell? oldCell) && (newCell == oldCell)))
+            if (!(cells.TryGetValue((name), out ICell? oldCell) && (newCell == oldCell)))
             {
-                cells[PreHash(name)] = newCell;
+                cells[(name)] = newCell;
                 graph.ReplaceDependents(name, formula.GetVariables());
                 foreach (var n in toDo)
-                    if (cells.TryGetValue(PreHash(n), out ICell? cell))
+                    if (cells.TryGetValue(n, out ICell? cell))
                         cell.Compute();
             }
             return [.. toDo];
@@ -384,7 +375,7 @@ namespace SS
         /// </summary>
         /// <inheritdoc/>
         /// <returns></returns>
-        public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys.Select(UnPreHash);
+        public override IEnumerable<string> GetNamesOfAllNonemptyCells() => cells.Keys;//.Select(UnPreHash);
 
         /// <summary>
         /// get the string version from the xml file with the given path
@@ -454,7 +445,7 @@ namespace SS
         public override object GetCellValue(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            return cells.TryGetValue(PreHash(name), out ICell? cell) ? cell.Value : "";
+            return cells.TryGetValue(name, out ICell? cell) ? cell.Value : "";
         }
 
         /// <summary>
@@ -467,7 +458,7 @@ namespace SS
         public override object GetCellContents(string name)
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
-            return cells.TryGetValue(PreHash(name), out ICell? value) ? value.Contents(forSave: false) : "";
+            return cells.TryGetValue(name, out ICell? value) ? value.Contents(forSave: false) : "";
         }
 
         /// <summary>

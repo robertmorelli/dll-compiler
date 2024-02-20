@@ -21,6 +21,7 @@
 /// </summary>
 
 using System.Text.RegularExpressions;
+using static SpreadsheetUtilities.Formula;
 
 namespace SpreadsheetUtilities
 {
@@ -30,10 +31,10 @@ namespace SpreadsheetUtilities
         // Patterns for individual tokens
         const string lpPattern = @"\(";
         const string rpPattern = @"\)";
-        const string opPattern = @"[\+\-*/]";
-        const string varPattern = @"[a-zA-Z_](?: [a-zA-Z_]|\d)*";
-        const string doublePattern = @"(?: \d+\.\d* | \d*\.\d+ | \d+ ) (?: [eE][\+-]?\d+)?";
-        const string spacePattern = @"\s+?";
+        const string opPattern = @"(?: [\+\-*/])";
+        const string varPattern = @"(?: [a-zA-Z]+?[a-zA-Z\d]* )";
+        const string doublePattern = @"(?: (?: \d+?\.\d*? | \d*?\.\d+? | \d+? ) (?: [eE][\+-]?\d+?)?)";
+        const string spacePattern = @"(?: \s+?)";
         // Overall pattern
         const string tokenPattern = @"("
                                     + lpPattern + @"|"
@@ -114,12 +115,12 @@ namespace SpreadsheetUtilities
         {
         }
 
-        private readonly List<Token> tokens;
+        private readonly Token[] Tokens;
+        private readonly string[] VarTokens;
         private TokenNode ExecutableAst;
-        private bool throwDivByZero = false;
-        private const string dbz = "divide by zero";
-        private int hashCodeCash = 0;
-        private bool hasHashCode = false;
+        private readonly bool ThrowDBZEveryTime = false;
+        private int HashCodeCash = 0;
+        private bool HasHashCode = false;
 
         /// <summary>
         /// Creates a Formula from a string that consists of an infix expression written as
@@ -148,24 +149,24 @@ namespace SpreadsheetUtilities
             var valueStack = new Stack<TokenNode>();
             var operatorStack = new Stack<Token>();
             var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, isValid);
-            tokens = GetNormalTokens(formula, normalize, isValid).ToList();
-            if (tokens.Count == 0) throw new FormulaFormatException("");
-            foreach (var token in MultiplyBy1(tokens))
-                if (tokenProcessor.TryGetValue(token.Type, out var procFunc))
-                    procFunc(token);
-            ExecutableAst = valueStack.Pop();
-            throwDivByZero = ExecutableAst.IsDBZConst();
-            ExecutableAst = ExecutableAst.Optmizied();
-            if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("");
-        }
+            Tokens = GetNormalTokens(formula, normalize, isValid).ToArray();
+            if (Tokens.Length == 0) throw new FormulaFormatException("nothin");
 
-        private static IEnumerable<Token> MultiplyBy1(IEnumerable<Token> tokenList)
-        {
-            yield return new Token("(");
-            foreach (var token in tokenList) yield return token;
-            yield return new Token(")");
-            yield return new Token("*");
-            yield return new Token("1");
+            tokenProcessor[TokenType.openParen](new Token("("));
+            foreach (var token in Tokens) tokenProcessor[token.Type](token);
+            tokenProcessor[TokenType.closedParen](new Token("("));
+            tokenProcessor[TokenType.multiplicative](new Token("*"));
+            tokenProcessor[TokenType.val](new Token("1"));
+
+            ExecutableAst = valueStack.Pop();
+            ThrowDBZEveryTime = ExecutableAst.IsDBZConst();
+            ExecutableAst = ExecutableAst.Optmizied();
+            VarTokens = Tokens
+                .Where((token) => token.isVar)
+                .Select((token) => token.primativeString)
+                .Distinct()
+                .ToArray();
+            if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("");
         }
 
         /// <summary>
@@ -191,7 +192,7 @@ namespace SpreadsheetUtilities
         /// </summary>
         public object Evaluate(Func<string, double> lookup)
         {
-            if (throwDivByZero) return new FormulaError(dbz + "for string: " + ToString());
+            if (ThrowDBZEveryTime) return new FormulaError("divide by zero for string: " + ToString());
             try { return ExecutableAst.Value(lookup); }
             catch (Exception e) { return new FormulaError(ToString() + " : " + e.Message); }
         }
@@ -207,12 +208,7 @@ namespace SpreadsheetUtilities
         /// new Formula("x+X*z", N, s => true).GetVariables() should enumerate "X" and "Z".
         /// new Formula("x+X*z").GetVariables() should enumerate "x", "X", and "z".
         /// </summary>
-        public IEnumerable<string> GetVariables() =>
-            tokens
-                .FindAll((token) => token.isVar)
-                .Select((token) => token.primativeString)
-                .Distinct()
-                .AsEnumerable();
+        public IEnumerable<string> GetVariables() => VarTokens;
 
         /// <summary>
         /// Returns a string containing no spaces which, if passed to the Formula
@@ -225,7 +221,7 @@ namespace SpreadsheetUtilities
         /// new Formula("x + Y").ToString() should return "x+Y"
         /// </summary>
         public override string ToString() =>
-            tokens
+            Tokens
                 .Select((token) => token.primativeString)
                 .Aggregate("", (a, b) => a + (a.Length > 0 ? " " : "") + b);
 
@@ -278,12 +274,12 @@ namespace SpreadsheetUtilities
         /// </summary>
         public override int GetHashCode()
         {
-            if (!hasHashCode)
+            if (!HasHashCode)
             {
-                hashCodeCash = ToString().GetHashCode();
-                hasHashCode = true;
+                HashCodeCash = ToString().GetHashCode();
+                HasHashCode = true;
             }
-            return hashCodeCash;
+            return HashCodeCash;
         }
 
         //types of tokens for the parse algorithm
@@ -451,7 +447,7 @@ namespace SpreadsheetUtilities
                 if (LeftChild == null || RightChild == null) return double.NaN;
                 var leftValue = ((TokenNode)LeftChild).Value(lookup);
                 var rightValue = ((TokenNode)RightChild).Value(lookup);
-                if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException(dbz);
+                if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException("divide by zero");
                 return primary.primativeString switch
                 {
                     "*" =>
@@ -493,17 +489,25 @@ namespace SpreadsheetUtilities
             public bool isLParens = false;
             public bool isRParens = false;
             public string primativeString;
-            public Token(string primative)
+            public Token(string primative) : this(primative, (_) => _, (_) => true) { }
+            public Token(string primative, Func<string, string> normalizer, Func<string, bool> isValid)
             {
-                if (isImm = double.TryParse(primative, out double d)) primativeString = d.ToString();
-                else primativeString = primative;
                 isVar = Utility.isVariableRegex().IsMatch(primative);
+                if (isImm = double.TryParse(primative, out double d)) primativeString = d.ToString();
+                else if (isVar)
+                {
+                    if (isValid(primative)) primativeString = normalizer(primative.Trim());
+                    else throw new FormulaFormatException("die exception");
+                }
+                else primativeString = primative;
                 isDiv = Utility.isDivRegex().IsMatch(primative);
                 isMult = Utility.isMultRegex().IsMatch(primative);
                 isAdd = Utility.isAddRegex().IsMatch(primative);
                 isSub = Utility.isSubRegex().IsMatch(primative);
                 isLParens = Utility.isOpeningParenRegex().IsMatch(primative);
                 isRParens = Utility.isClosingParenRegex().IsMatch(primative);
+                if (!(isAdd || isSub || IsMultiplicative || IsValue || isLParens || isRParens))
+                    throw new FormulaFormatException("die exception");
             }
             public readonly TokenType Type
             {
@@ -517,16 +521,6 @@ namespace SpreadsheetUtilities
                     return TokenType.val;
                 }
             }
-            public bool IsErroneos()
-            {
-                if (isAdd) return false;
-                if (isSub) return false;
-                if (IsMultiplicative) return false;
-                if (IsValue) return false;
-                if (isLParens) return false;
-                if (isRParens) return false;
-                return true;
-            }
         }
 
         private delegate void TokenProcFunc(Token token);
@@ -539,25 +533,14 @@ namespace SpreadsheetUtilities
         /// followed by zero or more letters, digits, or underscores; a double literal; and anything that doesn't
         /// match one of those patterns.  There are no empty tokens, and no token contains white space.
         /// </summary>
-        private static IEnumerable<Token> GetNormalTokens(string formulaPrimative, Func<string, string> normalize, Func<string, bool> isValid)
+        private static IEnumerable<Token> GetNormalTokens(string formula, Func<string, string> normalize, Func<string, bool> isValid)
         {
-            string formula = formulaPrimative;
+            List<Token> ret = [];
+            //slow plz fix
             foreach (var s in Utility.findTokenRegex().Split(formula))
                 if (!Utility.isWhiteSpaceRegex().IsMatch(s))
-                {
-                    var token = new Token(
-                        double.TryParse(s, out double d) ?
-                            d.ToString() :
-                            s.Trim()
-                        );
-                    if (token.isVar)
-                    {
-                        token = new Token(normalize(token.primativeString));
-                        if (!isValid(token.primativeString)) throw new FormulaFormatException("die exception");
-                    }
-                    if (token.IsErroneos()) throw new FormulaFormatException("die exception");
-                    else yield return token;
-                }
+                    ret.Add(new(s, normalize, isValid));
+            return ret;
         }
 
         public delegate int Lookup(string variable_name);

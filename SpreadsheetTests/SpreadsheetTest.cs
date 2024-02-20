@@ -14,7 +14,6 @@
 /// File Contents:
 /// My tests for my implementation of AbstractSpreadsheet
 /// </summary>
-using SpreadsheetUtilities;
 using SS;
 
 namespace SpreadsheetTests
@@ -28,7 +27,7 @@ namespace SpreadsheetTests
             Spreadsheet sheet = new();
             sheet.SetContentsOfCell("a0", "1");
             sheet.SetContentsOfCell("a1", "2");
-            for (int i = 2; i < 70000; i++) sheet.SetContentsOfCell("a" + i, "=a" + (i - 1) + " + a" + (i - 2) );
+            for (int i = 2; i < 150_000; i++) sheet.SetContentsOfCell("a" + i, "=a" + (i - 1) + " + a" + (i - 2) );
         }
 
         [TestMethod, ExpectedException(typeof(CircularException))]
