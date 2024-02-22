@@ -17,14 +17,14 @@
 
 
 using SpreadsheetUtilities;
-using System.Linq;
+using System.Collections;
 using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace SS
 {
     /// <summary>
-    /// utility class for keeping regex stuff since it needs to be a partial
+    /// Utility class for keeping regex stuff since it needs to be a partial
     /// in order to be a comp time regex imp
     /// </summary>
     internal partial class Utility
@@ -60,13 +60,6 @@ namespace SS
     /// </summary>
     public class Spreadsheet : AbstractSpreadsheet
     {
-
-        //emulate recursive stack frame
-        //firsthalf is a proxy for the return pointer
-        //(which is either at the start of the function of halfway through)
-        //name is a string stack variable
-        protected struct IRecompStackFrame { public string name; public bool firstHalf; };
-
 
         // whether the spreadsheet has changed
         protected bool _changed = false;
@@ -197,8 +190,76 @@ namespace SS
             xmlWriter.WriteEndDocument();
         }
 
+        /// <summary>
+        /// A dep list that only does stuff if its ever used
+        /// </summary>
+        /// <param name="name">cell name</param>
+        /// <param name="s">the spreadsheet reference</param>
+        protected struct RecalculatedCellList(string name, Spreadsheet s) : IList<string>
+        {
+            //emulate recursive stack frame
+            //firsthalf is a proxy for the return pointer
+            //(which is either at the start of the function of halfway through)
+            //name is a string stack variable
+            private struct IRecompStackFrame { public string name; public bool firstHalf; };
+            private static readonly Stack<IRecompStackFrame> virtualCallStack = new();
+            private IList<string>? _actualList;
+            private readonly Spreadsheet _spreadsheet = s;
+            private readonly string start = name;
+            private IList<string> EnsureList() => _actualList ??= GetList();
+            private IList<string> GetList()
+            {
+                HashSet<string> visited = [];
+                //obligatory "linked list bad" comment (because linked lists are BAD!)
+                //linked list alone causes about a 3rd of the slowdown from the
+                //true recursion implementation
+                Stack<string> changed = new();
+                // c# does not support tail call optimizations
 
-        protected static readonly Stack<IRecompStackFrame> virtualCallStack = new();
+                //same as original
+                //"Call" Visit(start...)
+                IRecompStackFrame frame = new() { name = start, firstHalf = true };
+                lock (virtualCallStack)
+                {
+                    do
+                    {
+                        if (frame.firstHalf)//ret pops either &Visit or &Visit + K
+                        {
+                            visited.Add(frame.name);
+                            frame.firstHalf = false;
+                            virtualCallStack.Push(frame);
+                            foreach (string dep in _spreadsheet.GetDirectDependents(frame.name))
+                            {
+                                if (!visited.Contains(dep))
+                                {
+                                    virtualCallStack.Push(new() { name = dep, firstHalf = true });
+                                }
+                            }
+                        }
+                        else
+                        {
+                            changed.Push(frame.name);
+                        }
+                    } while (virtualCallStack.TryPop(out frame));
+                }
+                return [..changed];
+            }
+            public string this[int index] { get => EnsureList()[index]; set => EnsureList()[index] = value; }
+            public int Count => EnsureList().Count;
+            public readonly bool IsReadOnly => true;
+            public void Add(string item) => EnsureList().Add(item);
+            public void Clear() => EnsureList().Clear();
+            public bool Contains(string item) => EnsureList().Contains(item);
+            public void CopyTo(string[] array, int arrayIndex) => EnsureList().CopyTo(array, arrayIndex);
+            public IEnumerator<string> GetEnumerator() => EnsureList().GetEnumerator();
+            public int IndexOf(string item) => EnsureList().IndexOf(item);
+            public void Insert(int index, string item) => EnsureList().Insert(index, item);
+            public bool Remove(string item) => EnsureList().Remove(item);
+            public void RemoveAt(int index) => EnsureList().RemoveAt(index);
+            IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)EnsureList()).GetEnumerator();
+        }
+
+
         /// <summary>
         /// virtual stack implementation of the base.GetCellsToRecalculate
         /// ~23% better performance but also matches the (undefined behavior based)
@@ -209,45 +270,7 @@ namespace SS
         /// <inheritdoc/>
         /// <param name="start">start cell</param>
         /// <returns></returns>
-        new protected IEnumerable<string> GetCellsToRecalculate(string start)
-        {
-            HashSet<string> visited = [];
-            string dep;
-            //obligatory "linked list bad" comment (because linked lists are BAD!)
-            //linked list alone causes about a 3rd of the slowdown from the
-            //true recursion implementation
-            Stack<string> changed = new();
-            // c# does not support tail call optimizations
-
-            //same as original
-            //"Call" Visit(start...)
-            IRecompStackFrame frame = new() { name = start, firstHalf = true };
-            lock (virtualCallStack)
-            {
-                do
-                {
-                    if (frame.firstHalf)//ret pops either &Visit or &Visit + K
-                    {
-                        visited.Add(frame.name);
-                        frame.firstHalf = false;
-                        virtualCallStack.Push(frame);
-                        foreach (string n in GetDirectDependents(frame.name))
-                        {
-                            dep = n;
-                            if (!visited.Contains(dep))
-                            {
-                                virtualCallStack.Push(new() { name = dep, firstHalf = true });
-                            }
-                        }
-                    }
-                    else
-                    {
-                        changed.Push(frame.name);
-                    }
-                } while (virtualCallStack.TryPop(out frame));
-            }
-            return changed;//.Select(UnPreHash);
-        }
+        new protected IList<string> GetCellsToRecalculate(string start) => new RecalculatedCellList(start, this);
 
         /// <summary>
         /// set a cell to a string value
@@ -258,7 +281,7 @@ namespace SS
         protected override IList<string> SetCellContents(string name, string text)
         {
             //should be empty but whatever
-            var toDo = GetCellsToRecalculate(name);
+            IList<string> deps = GetCellsToRecalculate(name);
 
             //store only if its not empty
             if (!Utility.IsNothing(text))
@@ -266,7 +289,7 @@ namespace SS
                 cells[name] = new StringCell(text);
                 graph.ReplaceDependents(name, []);
             }
-            return toDo.ToList();
+            return deps;
         }
 
         /// <summary>
@@ -277,7 +300,7 @@ namespace SS
         /// <returns></returns>
         protected override IList<string> SetCellContents(string name, double number)
         {
-            var toDo = GetCellsToRecalculate(name);
+            IList<string> deps = GetCellsToRecalculate(name);
 
             //if its a new cell do recalulations
             ICell newCell = new DoubleCell(number);
@@ -287,11 +310,11 @@ namespace SS
                 graph.ReplaceDependents(name, []);
                 newCell.Compute();
                 if (newCell.Value.GetType() == typeof(double))
-                    foreach (var n in toDo)
+                    foreach (var n in deps)
                         if (cells.TryGetValue(n, out ICell? cell))
                             cell.Compute();
             }
-            return toDo.ToList();
+            return deps;
         }
 
         protected override IList<string> SetCellContents(string name, Formula formula)
@@ -299,9 +322,9 @@ namespace SS
             //check if depends on its own vars
             if (formula.GetVariables().Contains(name)) throw new CircularException();
             //get recursive deps
-            var toDo = GetCellsToRecalculate(name);
+            IList<string> deps = GetCellsToRecalculate(name);
             //check if the recursive deps include its own deps
-            if (toDo.Intersect(formula.GetVariables()).Any()) throw new CircularException();
+            if (deps.Intersect(formula.GetVariables()).Any()) throw new CircularException();
 
             //if its a new cell do recalculations
             ICell newCell = new FormulaCell(formula, this);
@@ -311,11 +334,11 @@ namespace SS
                 graph.ReplaceDependents(name, formula.GetVariables());
                 newCell.Compute();
                 if (newCell.Value.GetType() == typeof(double))
-                    foreach (var n in toDo)
+                    foreach (var n in deps)
                         if (cells.TryGetValue(n, out ICell? cell))
                             cell.Compute();
             }
-            return toDo.ToList();
+            return deps;
         }
 
         /// <summary>
@@ -358,7 +381,7 @@ namespace SS
                             switch (reader.NodeType)
                             {
                                 case XmlNodeType.EndElement:
-                                    if (reader.Name == "cell") goto exitloop; //AAAAAH CALL THE POILCE ITS A GOTO
+                                    if (reader.Name == "cell") goto exitloop; //AAAAAH CALL THE POILCE ITS A GOTO (no break loop in switch and no labeled break)
                                     break;
                                 case XmlNodeType.Element:
                                     if (reader.Name == "name" && reader.Read())
