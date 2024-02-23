@@ -4,8 +4,10 @@ namespace GUI
 {
     public partial class MainPage : ContentPage
     {
-        static readonly int rows = 80000;
-        static readonly int columns = 80000;
+        static readonly int rows = 1_000_000;
+        static readonly int columns = 1_000_000;
+        static readonly int widths = 400;
+        static readonly int height = 30;
         public MainPage()
         {
             InitializeComponent();
@@ -14,30 +16,36 @@ namespace GUI
             {
                 RowDefinitions = new RowDefinitionCollection(
                     Enumerable.Range(0, rows)
-                    .Select((_) => new RowDefinition(height: 10)).ToArray()), //.Where<RowDefinition>((_) => new RowDefinition()).ToArray(),
+                    .Select((_) => new RowDefinition(height: height)).ToArray()), //.Where<RowDefinition>((_) => new RowDefinition()).ToArray(),
                 ColumnDefinitions = new ColumnDefinitionCollection(
                     Enumerable.Range(0, columns)
-                    .Select((_) => new ColumnDefinition(width: 10)).ToArray()),
-                WidthRequest = columns * 10,
+                    .Select((_) => new ColumnDefinition(width: widths)).ToArray()),
+                WidthRequest = columns * widths,
+                HeightRequest = rows * height,
                 BackgroundColor = Colors.Azure
             };
             TapGestureRecognizer taps = new();
-            taps.Tapped += (s, e) => OnGridTapped(s, e, grid);
+            taps.Tapped += (s, e) => OnGridTapped(e, grid);
             grid.GestureRecognizers.Add(taps);
 
             gridholder?.Add(grid);
         }
 
-        static private void OnGridTapped(object? _, TappedEventArgs e, Grid grid)
+        static private void OnGridTapped(TappedEventArgs e, Grid grid)
         {
             var pos = (Point)e.GetPosition(grid);
+            var inp = new Entry
+            {
+                BackgroundColor = Colors.Beige,
+                HeightRequest = height,
+                WidthRequest = widths,
+            };
             grid.Add(
-                new Label
-                {
-                    BackgroundColor = Colors.Red
-                },
-                (int)(pos.X / 10),
-                (int)(pos.Y / 10));
+                inp,
+                (int)(pos.X / widths),
+                (int)(pos.Y / height)
+                );
+            inp.Focus();
         }
     }
 }

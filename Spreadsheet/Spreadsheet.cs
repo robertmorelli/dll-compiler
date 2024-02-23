@@ -158,7 +158,6 @@ namespace SS
             private readonly Spreadsheet spreadsheet = s;
             private readonly double Lookup(string s)
             {
-                //ulong index = PreHash(s);
                 ICell cell = spreadsheet.cells[s];
                 double val = (double)cell.Value;
                 return val;

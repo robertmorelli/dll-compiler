@@ -24,8 +24,7 @@
                     x:Name="Table"
                     Orientation="Both"
                     HorizontalOptions="FillAndExpand"
-                    HorizontalScrollBarVisibility="Always"
-                    HeightRequest="500">
+                    HorizontalScrollBarVisibility="Always">
             <HorizontalStackLayout>
                 <VerticalStackLayout x:Name="LeftLabels"  BackgroundColor="LightBlue"></VerticalStackLayout>
                 <VerticalStackLayout x:Name="Grid"        BackgroundColor="LightGoldenrodYellow"></VerticalStackLayout>
