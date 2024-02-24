@@ -1,11 +1,9 @@
-﻿using System.Linq;
-
-namespace GUI
+﻿namespace GUI
 {
     public partial class MainPage : ContentPage
     {
-        static readonly int rows = 1_000_000;
-        static readonly int columns = 1_000_000;
+        static readonly int rows = 99;
+        static readonly int columns = 26;
         static readonly int widths = 400;
         static readonly int height = 30;
         public MainPage()
@@ -24,28 +22,20 @@ namespace GUI
                 HeightRequest = rows * height,
                 BackgroundColor = Colors.Azure
             };
-            TapGestureRecognizer taps = new();
-            taps.Tapped += (s, e) => OnGridTapped(e, grid);
-            grid.GestureRecognizers.Add(taps);
-
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < columns; j++)
+                    grid.Add(new Entry
+                    {
+                        BackgroundColor = Colors.Beige,
+                        HeightRequest = height,
+                        WidthRequest = widths,
+                    }, j, i);
             gridholder?.Add(grid);
         }
 
-        static private void OnGridTapped(TappedEventArgs e, Grid grid)
+        private void SettupCellAdder(Entry entry, int j, int i)
         {
-            var pos = (Point)e.GetPosition(grid);
-            var inp = new Entry
-            {
-                BackgroundColor = Colors.Beige,
-                HeightRequest = height,
-                WidthRequest = widths,
-            };
-            grid.Add(
-                inp,
-                (int)(pos.X / widths),
-                (int)(pos.Y / height)
-                );
-            inp.Focus();
+
         }
     }
 }
