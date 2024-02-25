@@ -241,7 +241,7 @@ namespace SS
                         }
                     } while (virtualCallStack.TryPop(out frame));
                 }
-                return [..changed];
+                return [.. changed];
             }
             public string this[int index] { get => EnsureList()[index]; set => EnsureList()[index] = value; }
             public int Count => EnsureList().Count;
@@ -282,11 +282,17 @@ namespace SS
             //should be empty but whatever
             IList<string> deps = GetCellsToRecalculate(name);
 
+            cells.Remove(name);
             //store only if its not empty
-            if (!Utility.IsNothing(text))
+            ICell newCell = new StringCell(text);
+            if (!(cells.TryGetValue(name, out ICell? oldCell) && (newCell == oldCell)))
             {
-                cells[name] = new StringCell(text);
+                cells[name] = newCell;
                 graph.ReplaceDependents(name, []);
+                newCell.Compute();
+                foreach (var n in deps)
+                    if (cells.TryGetValue(n, out ICell? cell))
+                        cell.Compute();
             }
             return deps;
         }
@@ -308,10 +314,9 @@ namespace SS
                 cells[name] = newCell;
                 graph.ReplaceDependents(name, []);
                 newCell.Compute();
-                if (newCell.Value.GetType() == typeof(double))
-                    foreach (var n in deps)
-                        if (cells.TryGetValue(n, out ICell? cell))
-                            cell.Compute();
+                foreach (var n in deps)
+                    if (cells.TryGetValue(n, out ICell? cell))
+                        cell.Compute();
             }
             return deps;
         }
@@ -332,10 +337,9 @@ namespace SS
                 cells[name] = newCell;
                 graph.ReplaceDependents(name, formula.GetVariables());
                 newCell.Compute();
-                if (newCell.Value.GetType() == typeof(double))
-                    foreach (var n in deps)
-                        if (cells.TryGetValue(n, out ICell? cell))
-                            cell.Compute();
+                foreach (var n in deps)
+                    if (cells.TryGetValue(n, out ICell? cell))
+                        cell.Compute();
             }
             return deps;
         }
@@ -497,6 +501,12 @@ namespace SS
         {
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             return cells.TryGetValue(name, out ICell? value) ? value.Contents(forSave: false) : "";
+        }
+
+        public object GetCellContents(string name, bool better)
+        {
+            if (Utility.IsInvalidName(name)) throw new InvalidNameException();
+            return cells.TryGetValue(name, out ICell? value) ? value.Contents(forSave: better) : "";
         }
 
         /// <summary>

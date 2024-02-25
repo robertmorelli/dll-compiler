@@ -1,4 +1,5 @@
 ﻿using Microsoft.Maui.Controls.Internals;
+using SpreadsheetUtilities;
 using SS;
 
 namespace GUI
@@ -28,18 +29,18 @@ namespace GUI
                     .Select((_) => new ColumnDefinition(width: widths)).ToArray()),
                 WidthRequest = columns * widths,
                 HeightRequest = rows * heights,
-                BackgroundColor = Colors.DarkCyan
+                BackgroundColor = Colors.SkyBlue
             };
 
             TapGestureRecognizer taps = new();
-            taps.Tapped += (s, e) => OnGridTapped(s, e, grid);
+            taps.Tapped += (_, e) => OnGridTapped(e, grid);
             grid.GestureRecognizers.Add(taps);
 
 
             gridholder?.Add(grid);
         }
 
-        private void OnGridTapped(object? _, TappedEventArgs e, Grid grid)
+        private void OnGridTapped(TappedEventArgs e, Grid grid)
         {
             var pos = (Point)e.GetPosition(grid);
             entryI = (int)(pos.X / widths);
@@ -47,18 +48,25 @@ namespace GUI
             string cellName = getCellName(entryI, entryJ);
 
 
-            var entry = new Entry { BackgroundColor = Colors.Blue };
+            if (labels.TryGetValue(cellName, out var label))
+            {
+                grid.Remove(label);
+                labels.Remove(cellName);
+            }
+
+            var entry = new Entry
+            {
+                BackgroundColor = Colors.Azure,
+                Text = spreadsheet.GetCellContents(cellName, true).ToString(),
+                ClearButtonVisibility = ClearButtonVisibility.Never,
+            };
 
 
             entry.Unfocused += (sender, e) =>
             {
-                grid.Remove(entry);
-            };
-            entry.Completed += (sender, e) =>
-            {
                 try
                 {
-                    var toDo = spreadsheet.SetContentsOfCell(cellName, entry.Text);
+                    var toDo = spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
                     foreach (var item in toDo)
                     {
                         if (labels.TryGetValue(item, out var label))
@@ -66,24 +74,39 @@ namespace GUI
                             grid.Remove(label);
                             labels.Remove(item);
                         }
-                        var value = spreadsheet.GetCellValue(item);
-                        var lab = new Label
+                        object value = spreadsheet.GetCellValue(item);
+                        string valueString =
+                            (value is FormulaError exception) ?
+                                exception.Reason :
+                                (value is string s) ?
+                                    s :
+                                    (value is double d) ?
+                                    d.ToString() :
+                                    "Something went wrong";
+                        if (!valueString.Equals(""))
                         {
-                            BackgroundColor = Colors.Azure,
-                            Text = (value is FormatException exception) ? exception.Message : value.ToString()
-                        };
-                        labels.Add(item, lab);
-                        grid.Add(lab, RowFromCellName(item), ColFromCellName(item));
+                            var lab = new Label
+                            {
+                                BackgroundColor = Colors.Azure,
+                                Text = valueString
+                            };
+                            labels.Add(item, lab);
+                            grid.Add(lab, RowFromCellName(item), ColFromCellName(item));
+                        }
                     }
                     grid.Remove(entry);
                 }
-                catch {
+                catch
+                {
                     //manage errors for circular ...
                 }
             };
+            entry.Completed += (sender, e) => entry.Unfocus();
 
             grid.Add(entry, entryI, entryJ);
             entry.Focus();
+            entry.CursorPosition = (entry.Text ?? "").Length;
+            entry.ClearButtonVisibility = ClearButtonVisibility.Never;
         }
 
         private void ChangeCell(int i, int j)

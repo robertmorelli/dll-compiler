@@ -118,7 +118,7 @@ namespace SpreadsheetUtilities
             tokenProcessor[TokenType.val](new Token("1"));
 
             ExecutableAst = valueStack.Pop();
-            if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("");
+            if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("unmatched parenthesis or other operator");
             ThrowDBZEveryTime = ExecutableAst.IsDBZConst();
             ExecutableAst = ExecutableAst.Optmizied();
             VarTokens = Tokens
