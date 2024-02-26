@@ -14,9 +14,9 @@ namespace GUI
         internal Dictionary<string, Label> labels = [];
         internal int entryI = 0;
         internal int entryJ = 0;
-        public MainPage()
+        public MainPage() //might need to change how this is loaded
         {
-            spreadsheet = new();
+            spreadsheet = new(s => true, s => s.ToUpper(), "six");
             InitializeComponent();
             VerticalStackLayout gridholder = FindByName("Grid") as VerticalStackLayout;
             Grid grid = new()
@@ -29,7 +29,7 @@ namespace GUI
                     .Select((_) => new ColumnDefinition(width: widths)).ToArray()),
                 WidthRequest = columns * widths,
                 HeightRequest = rows * heights,
-                BackgroundColor = Colors.SkyBlue
+                BackgroundColor = Colors.Black
             };
 
             TapGestureRecognizer taps = new();
@@ -56,7 +56,7 @@ namespace GUI
 
             var entry = new Entry
             {
-                BackgroundColor = Colors.Azure,
+                BackgroundColor = Colors.Black,
                 Text = spreadsheet.GetCellContents(cellName, true).ToString(),
                 ClearButtonVisibility = ClearButtonVisibility.Never,
             };
@@ -87,7 +87,7 @@ namespace GUI
                         {
                             var lab = new Label
                             {
-                                BackgroundColor = Colors.Azure,
+                                BackgroundColor = Colors.Black,
                                 Text = valueString
                             };
                             labels.Add(item, lab);
@@ -114,17 +114,60 @@ namespace GUI
 
         }
 
-        private void FileMenuNew(object sender, EventArgs e)
+        private async void FileMenuNew(object sender, EventArgs e)
         {
-
-            //if (spreadsheet.Changed)
-            //else spreadsheet.Save() { }
+            if (spreadsheet.Changed)
+            {
+                bool response = await DisplayAlert("Potential Data Loss",
+                "Creating a new file will cause current contents to be lost, do you wish to continue?",
+                "Yes", "No");
+                if (response) spreadsheet = new(); //curious if it can imply the same parameters
+            }
+            else spreadsheet = new(); //do we need to do other initalization?
         }
 
-        private void FileMenuOpenAsync(object sender, EventArgs e)
+        private async void FileMenuOpenAsync(object sender, EventArgs e) //https://learn.microsoft.com/en-us/dotnet/maui/user-interface/pop-ups?view=net-maui-8.0
+        {
+            if (spreadsheet.Changed)
+            {
+                bool response = await DisplayAlert("Potential Data Loss",
+                "Opening a new file will cause current contents to be lost, do you wish to continue?",
+                "Yes", "No");
+                if (response) spreadsheet = new();
+
+                string filepath = await DisplayPromptAsync("Open File",
+                "Give the path to the file to be opened.");
+                try
+                {
+                    spreadsheet = new(filepath, s => true, s => s.ToUpper(), "six");
+                }
+                catch (SpreadsheetReadWriteException ex)
+                {
+                    await DisplayAlert("Failed to open file", ex.ToString(), "OK");
+                }
+            }
+            else
+            { //do we need to do other initalization? Also I need some ways to shorten this.
+                
+                string filepath = await DisplayPromptAsync("Open File",
+                    "Give the path to the file to be opened.");
+                try
+                {
+                    spreadsheet = new(filepath, s => true, s => s.ToUpper(), "six");
+                }
+                catch (SpreadsheetReadWriteException ex)
+                {
+                    await DisplayAlert("Failed to open file", ex.ToString(), "OK");
+                }
+            } 
+        }
+
+        private void FileMenuHelp(object sender, EventArgs e)
         {
 
         }
+
+
 
         private string ColName(int i) => i.ToString();
         private string RowName(int i) => "" + (char)('A' + i);

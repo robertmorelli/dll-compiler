@@ -5,8 +5,9 @@
 
     <ContentPage.MenuBarItems>
         <MenuBarItem Text="File">
-            <MenuFlyoutItem Text="New" Clicked="FileMenuNew" />
+            <MenuFlyoutItem Text="New" Clicked="FileMenuNew"/>
             <MenuFlyoutItem Text="Open" Clicked="FileMenuOpenAsync" />
+            <MenuFlyoutItem Text="Help" Clicked="FileMenuHelp"/>
         </MenuBarItem>
     </ContentPage.MenuBarItems>
 
@@ -22,7 +23,7 @@
         </Border>
 
         <!-- the column headers: A, B, C, ... -->
-        <HorizontalStackLayout x:Name="TopLabels" BackgroundColor="LightBlue"/>
+        <HorizontalStackLayout x:Name="TopLabels" BackgroundColor="Yellow"/>
 
         <!-- the Grid of Spreadsheet GUI Cells -->
         <ScrollView
@@ -32,7 +33,7 @@
                     HorizontalScrollBarVisibility="Always"
                     HeightRequest="500">
             <HorizontalStackLayout>
-                <VerticalStackLayout x:Name="LeftLabels"  BackgroundColor="LightBlue"></VerticalStackLayout>
+                <VerticalStackLayout x:Name="LeftLabels"  BackgroundColor="DarkGray"></VerticalStackLayout>
                 <VerticalStackLayout x:Name="Grid"        BackgroundColor="LightGoldenrodYellow"></VerticalStackLayout>
             </HorizontalStackLayout>
         </ScrollView>
