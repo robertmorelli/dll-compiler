@@ -18,6 +18,10 @@
 
 using SpreadsheetUtilities;
 using System.Collections;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.InteropServices;
+using System.Runtime.Loader;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -161,6 +165,9 @@ namespace SS
                 ICell cell = spreadsheet.cells[s];
                 double val = (double)cell.Value;
                 return val;
+            }
+            public void Compile(ILGenerator gen) {
+                _content.Compile(gen);
             }
         }
 
@@ -524,6 +531,62 @@ namespace SS
             return double.TryParse(content, out double d) ? SetCellContents(name, d) :
                     content.StartsWith('=') ? SetCellContents(name, new Formula(content[1..], Normalize, IsValid)) :
                     SetCellContents(name, content);
+        }
+
+
+        public void Compile(string name)
+        {
+            AssemblyBuilder ab = AssemblyBuilder.DefinePersistedAssembly(new AssemblyName(name + "Assembly"), typeof(object).Assembly);
+            ModuleBuilder mob = ab.DefineDynamicModule(name + "Module");
+            TypeBuilder tb = mob.DefineType("sheet", TypeAttributes.Public | TypeAttributes.Class);
+
+
+            ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
+            ILGenerator ctorIL = ctor.GetILGenerator();
+            ctorIL.Emit(OpCodes.Ret);
+
+            
+
+            //setters/getters for doubleCells
+            //set -> compute dependees
+            //get -> straight lookup
+            //getters for formula cells
+            //get -> straight lookup (assume already set)
+
+            foreach (var cellName in cells.Keys)
+            {
+                if (cells[cellName] is StringCell || cells[cellName].Value is not double d) continue;
+                FieldBuilder fb = tb.DefineField("_"+cellName, typeof(double), FieldAttributes.Private);//make readonly if cells[cellName] is FormulaCell
+                //ctorIL.Emit();... load d into _cellName
+                //define getter to lookup cell
+            }
+
+            foreach (var cellName in cells.Keys)
+            {
+                if (cells[cellName] is StringCell || cells[cellName] is DoubleCell || cells[cellName].Value is not double d) continue;
+                //define computes for all formula cells by calling Cell.CompileSelf(ILGenerator) (private computes)
+            }
+
+
+            foreach (var cellName in cells.Keys)
+            {
+                IEnumerable<string> deps = GetCellsToRecalculate(cellName);
+                if (cells[cellName] is StringCell || cells[cellName] is FormulaCell || cells[cellName].Value is not double d) continue;
+                //generate setter for cellName based on dependee array call all Direct[depName]
+            }
+
+
+            try
+            {
+                //worry about this later
+                using var stream = new MemoryStream();
+                ab.Save(stream);
+                //"C:\\Users\\bob\\OneDrive\\Desktop\\file.dll"
+            }
+            catch {
+            }
+            
+            //save to desktop
         }
     }
 }

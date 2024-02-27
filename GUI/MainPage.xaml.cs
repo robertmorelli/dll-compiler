@@ -17,8 +17,9 @@ namespace GUI
         public MainPage()
         {
             spreadsheet = new();
+            spreadsheet.Compile("sheet");
             InitializeComponent();
-            VerticalStackLayout gridholder = FindByName("Grid") as VerticalStackLayout;
+            VerticalStackLayout gridHolder = FindByName("Grid") as VerticalStackLayout;
             Grid grid = new()
             {
                 RowDefinitions = new RowDefinitionCollection(
@@ -37,7 +38,7 @@ namespace GUI
             grid.GestureRecognizers.Add(taps);
 
 
-            gridholder?.Add(grid);
+            gridHolder?.Add(grid);
         }
 
         private void OnGridTapped(TappedEventArgs e, Grid grid)

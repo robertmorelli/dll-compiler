@@ -20,6 +20,7 @@
 /// I did ask the prof and he said I was allowed to do this
 /// </summary>
 
+using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 
 namespace SpreadsheetUtilities
@@ -76,7 +77,7 @@ namespace SpreadsheetUtilities
 
         private readonly Token[] Tokens;
         private readonly string[] VarTokens;
-        private TokenNode ExecutableAst;
+        public TokenNode ExecutableAst;
         private readonly bool ThrowDBZEveryTime = false;
         private int HashCodeCash = 0;
         private bool HasHashCode = false;
@@ -242,7 +243,7 @@ namespace SpreadsheetUtilities
         }
 
         //types of tokens for the parse algorithm
-        internal enum TokenType
+        public enum TokenType
         {
             multiplicative = 0,
             additive = 1,
@@ -258,7 +259,7 @@ namespace SpreadsheetUtilities
         /// elements with primary ops are to be evaluated
         /// elements with primary vals are either immediate value or var
         /// </summary>
-        internal struct TokenNode
+        public struct TokenNode
         {
             //non-optimizing constructor
             public TokenNode(Token primary, TokenNode? left, TokenNode? right)
@@ -380,6 +381,14 @@ namespace SpreadsheetUtilities
                                                    //(LeftChild != null ? (HasConstValue ? "=" + constValue : "") : "");
             }
 
+            public void Compile(ILGenerator gen) {
+                if (RightChild != null || LeftChild != null) {
+                    RightChild?.Compile(gen);
+                    RightChild?.Compile(gen);
+                    primary.Compile(gen);
+                }
+            }
+
             //who said there were no pointers in "safe" c#?
             internal class ReferenceLMAO(TokenNode? tn) { public TokenNode? tn = tn; }
             private readonly ReferenceLMAO _leftRef;
@@ -427,7 +436,7 @@ namespace SpreadsheetUtilities
         /// should probably be built with an enum
         /// TODO: build with enum
         /// </summary>
-        internal struct Token
+        public struct Token
         {
             /// <summary>
             /// these vars exist because im too lazy to make
@@ -479,6 +488,14 @@ namespace SpreadsheetUtilities
                     if (isRParens) return TokenType.closedParen;
                     return TokenType.val;
                 }
+            }
+            public void Compile(ILGenerator gen) {
+                if (isAdd) gen.Emit(OpCodes.Add);
+                else if (isSub) gen.Emit(OpCodes.Sub);
+                else if (isDiv) gen.Emit(OpCodes.Div);
+                else if (isMult) gen.Emit(OpCodes.Mul);
+                else if (isImm) gen.Emit(OpCodes.Ldc_R8, double.Parse(primativeString));
+                else if (is)
             }
         }
 
@@ -648,6 +665,10 @@ namespace SpreadsheetUtilities
                 {TokenType.openParen, openParenFunc },
                 {TokenType.closedParen, closeParenFunc },
             };
+        }
+
+        public void Compile(ILGenerator gen) {
+            ExecutableAst.Compile(gen);
         }
     }
 

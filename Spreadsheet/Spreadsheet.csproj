@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
@@ -10,6 +10,12 @@
   <ItemGroup>
     <ProjectReference Include="..\DependencyGraph\DependencyGraph.csproj" />
     <ProjectReference Include="..\Formula\Formula.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="CompilerTest">
+      <HintPath>..\CompilerTest\bin\Debug\CompilerTest.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
