@@ -541,37 +541,36 @@ namespace SS
             ModuleBuilder mob = ab.DefineDynamicModule(name + "Module");
             TypeBuilder tb = mob.DefineType("sheetspace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
 
-
-
-            ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
-            ILGenerator ctorIL = ctor.GetILGenerator();
-
-
             var fields = new Dictionary<string, FieldBuilder>();
             var computeFuncs = new Dictionary<string, MethodBuilder>();
+
+            //define all fields and getters
             foreach (var cellName in cells.Keys)
             {
                 if (cells[cellName] is StringCell || cells[cellName].Value is not double d) continue;
                 FieldBuilder fb = tb.DefineField("_" + cellName, typeof(double), FieldAttributes.Private);//make readonly if cells[cellName] is FormulaCell
                 fields[cellName] = fb;
-
-                //for constructor
-                ctorIL.Emit(OpCodes.Ldarg_0);
-                ctorIL.Emit(OpCodes.Ldc_R8, d);
-                ctorIL.Emit(OpCodes.Stfld, fields[cellName]);
-                //----
-
                 MethodBuilder getterMethod = tb.DefineMethod("Get_" + cellName, MethodAttributes.Public , typeof(double), Type.EmptyTypes);
                 ILGenerator getterIL = getterMethod.GetILGenerator();
                 getterIL.Emit(OpCodes.Ldarg_0);
                 getterIL.Emit(OpCodes.Ldfld, fields[cellName]);
                 getterIL.Emit(OpCodes.Ret);
+            }
 
+            //define constructor
+            ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
+            ILGenerator ctorIL = ctor.GetILGenerator();
+            foreach (var cellName in cells.Keys)
+            {
+                if (cells[cellName] is StringCell || cells[cellName].Value is not double d) continue;
+                ctorIL.Emit(OpCodes.Ldarg_0);
+                ctorIL.Emit(OpCodes.Ldc_R8, d);
+                ctorIL.Emit(OpCodes.Stfld, fields[cellName]);
 
-                
             }
             ctorIL.Emit(OpCodes.Ret);
 
+            //define all compute formula functions
             foreach (var cellName in cells.Keys)
             {
                 if (cells[cellName] is StringCell || cells[cellName] is DoubleCell || cells[cellName].Value is not double) continue;
@@ -589,6 +588,7 @@ namespace SS
             }
 
 
+            //define all field setters to compute relevant fields
             foreach (var cellName in cells.Keys)
             {
                 IEnumerable<string> deps = GetCellsToRecalculate(cellName);
