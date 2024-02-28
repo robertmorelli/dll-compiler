@@ -6,8 +6,8 @@ namespace GUI
 {
     public partial class MainPage : ContentPage
     {
-        static readonly int rows = 99;
-        static readonly int columns = 26;
+        static readonly int rows = 10;
+        static readonly int columns = 10;
         static readonly int widths = 400;
         static readonly int heights = 30;
         internal Spreadsheet spreadsheet;
@@ -16,6 +16,8 @@ namespace GUI
         internal int entryJ = 0;
         public MainPage() //might need to change how this is loaded
         {
+            
+
             spreadsheet = new(s => true, s => s.ToUpper(), "six");
             InitializeComponent();
             VerticalStackLayout gridholder = FindByName("Grid") as VerticalStackLayout;
