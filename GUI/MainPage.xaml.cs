@@ -17,7 +17,6 @@ namespace GUI
         public MainPage()
         {
             spreadsheet = new();
-            spreadsheet.Compile("sheet");
             InitializeComponent();
             VerticalStackLayout gridHolder = FindByName("Grid") as VerticalStackLayout;
             Grid grid = new()

@@ -537,9 +537,15 @@ namespace SS
 
         public void Compile(string name)
         {
-            AssemblyBuilder ab = AssemblyBuilder.DefinePersistedAssembly(new AssemblyName(name + "Assembly"), typeof(object).Assembly);
-            ModuleBuilder mob = ab.DefineDynamicModule(name + "Module");
-            TypeBuilder tb = mob.DefineType("sheetspace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
+            var ab = AssemblyBuilder.DefinePersistedAssembly(new AssemblyName(name + "Assembly"), typeof(object).Assembly);
+            var mob = ab.DefineDynamicModule(name + "Module");
+            var tb = mob.DefineType("sheetspace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
+
+
+
+            ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
+            ILGenerator ctorIL = ctor.GetILGenerator();
+
 
             var fields = new Dictionary<string, FieldBuilder>();
             var computeFuncs = new Dictionary<string, MethodBuilder>();
@@ -575,8 +581,8 @@ namespace SS
             {
                 if (cells[cellName] is StringCell || cells[cellName] is DoubleCell || cells[cellName].Value is not double) continue;
 
-                MethodBuilder computeMethod = tb.DefineMethod("Compute_" + cellName, MethodAttributes.Private, typeof(void), Type.EmptyTypes);
-                ILGenerator computeIL = computeMethod.GetILGenerator();
+                var computeMethod = tb.DefineMethod("Compute_" + cellName, MethodAttributes.Private, typeof(void), Type.EmptyTypes);
+                var computeIL = computeMethod.GetILGenerator();
 
                 
                 computeIL.Emit(OpCodes.Ldarg_0);
@@ -595,8 +601,8 @@ namespace SS
                 if (cells[cellName] is StringCell || cells[cellName] is FormulaCell || cells[cellName].Value is not double) continue;
 
                 // Define setter
-                MethodBuilder setterMethod = tb.DefineMethod("Put_" + cellName, MethodAttributes.Public, typeof(void), [typeof(double)]);
-                ILGenerator setterIL = setterMethod.GetILGenerator();
+                var setterMethod = tb.DefineMethod("Put_" + cellName, MethodAttributes.Public, typeof(void), [typeof(double)]);
+                var setterIL = setterMethod.GetILGenerator();
 
                 // Setter Logic:
                 setterIL.Emit(OpCodes.Ldarg_0); // Load 'this' (the object instance)
@@ -606,7 +612,7 @@ namespace SS
                 // Dependency recalculation:
                 foreach (var depCell in deps)
                 {
-                    if (computeFuncs.TryGetValue(depCell, out MethodBuilder? b))
+                    if (computeFuncs.TryGetValue(depCell, out var b))
                     {
                         setterIL.Emit(OpCodes.Ldarg_0);  // Load 'this' 
                         setterIL.Emit(OpCodes.Callvirt, b); // Call compute_[depCell]
@@ -616,7 +622,9 @@ namespace SS
                 setterIL.Emit(OpCodes.Ret);
             }
             tb.CreateType();
-            ab.Save("C:\\Users\\bob\\OneDrive\\Desktop\\"+name+".dll");
+            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            var fullPath = Path.Combine(desktopPath, name + ".dll");
+            ab.Save(fullPath);
         }
     }
 }
