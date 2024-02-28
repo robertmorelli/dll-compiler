@@ -166,8 +166,9 @@ namespace SS
                 double val = (double)cell.Value;
                 return val;
             }
-            public void Compile(ILGenerator gen) {
-                _content.Compile(gen);
+            public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
+            {
+                _content.Compile(gen, fields);
             }
         }
 
@@ -538,55 +539,84 @@ namespace SS
         {
             AssemblyBuilder ab = AssemblyBuilder.DefinePersistedAssembly(new AssemblyName(name + "Assembly"), typeof(object).Assembly);
             ModuleBuilder mob = ab.DefineDynamicModule(name + "Module");
-            TypeBuilder tb = mob.DefineType("sheet", TypeAttributes.Public | TypeAttributes.Class);
+            TypeBuilder tb = mob.DefineType("sheetspace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
+
 
 
             ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
             ILGenerator ctorIL = ctor.GetILGenerator();
-            ctorIL.Emit(OpCodes.Ret);
 
-            
 
-            //setters/getters for doubleCells
-            //set -> compute dependees
-            //get -> straight lookup
-            //getters for formula cells
-            //get -> straight lookup (assume already set)
-
+            var fields = new Dictionary<string, FieldBuilder>();
+            var computeFuncs = new Dictionary<string, MethodBuilder>();
             foreach (var cellName in cells.Keys)
             {
                 if (cells[cellName] is StringCell || cells[cellName].Value is not double d) continue;
-                FieldBuilder fb = tb.DefineField("_"+cellName, typeof(double), FieldAttributes.Private);//make readonly if cells[cellName] is FormulaCell
-                //ctorIL.Emit();... load d into _cellName
-                //define getter to lookup cell
+                FieldBuilder fb = tb.DefineField("_" + cellName, typeof(double), FieldAttributes.Private);//make readonly if cells[cellName] is FormulaCell
+                fields[cellName] = fb;
+
+                //for constructor
+                ctorIL.Emit(OpCodes.Ldarg_0);
+                ctorIL.Emit(OpCodes.Ldc_R8, d);
+                ctorIL.Emit(OpCodes.Stfld, fields[cellName]);
+                //----
+
+                MethodBuilder getterMethod = tb.DefineMethod("Get_" + cellName, MethodAttributes.Public , typeof(double), Type.EmptyTypes);
+                ILGenerator getterIL = getterMethod.GetILGenerator();
+                getterIL.Emit(OpCodes.Ldarg_0);
+                getterIL.Emit(OpCodes.Ldfld, fields[cellName]);
+                getterIL.Emit(OpCodes.Ret);
+
+
+                
             }
+            ctorIL.Emit(OpCodes.Ret);
 
             foreach (var cellName in cells.Keys)
             {
-                if (cells[cellName] is StringCell || cells[cellName] is DoubleCell || cells[cellName].Value is not double d) continue;
-                //define computes for all formula cells by calling Cell.CompileSelf(ILGenerator) (private computes)
+                if (cells[cellName] is StringCell || cells[cellName] is DoubleCell || cells[cellName].Value is not double) continue;
+
+                MethodBuilder computeMethod = tb.DefineMethod("Compute_" + cellName, MethodAttributes.Private, typeof(void), Type.EmptyTypes);
+                ILGenerator computeIL = computeMethod.GetILGenerator();
+
+                
+                computeIL.Emit(OpCodes.Ldarg_0);
+                ((FormulaCell)cells[cellName]).Compile(computeIL, fields);
+                computeIL.Emit(OpCodes.Stfld, fields[cellName]);
+                computeIL.Emit(OpCodes.Ret);
+
+                computeFuncs[cellName] = computeMethod;
             }
 
 
             foreach (var cellName in cells.Keys)
             {
                 IEnumerable<string> deps = GetCellsToRecalculate(cellName);
-                if (cells[cellName] is StringCell || cells[cellName] is FormulaCell || cells[cellName].Value is not double d) continue;
-                //generate setter for cellName based on dependee array call all Direct[depName]
-            }
+                if (cells[cellName] is StringCell || cells[cellName] is FormulaCell || cells[cellName].Value is not double) continue;
 
+                // Define setter
+                MethodBuilder setterMethod = tb.DefineMethod("Put_" + cellName, MethodAttributes.Public, typeof(void), [typeof(double)]);
+                ILGenerator setterIL = setterMethod.GetILGenerator();
 
-            try
-            {
-                //worry about this later
-                using var stream = new MemoryStream();
-                ab.Save(stream);
-                //"C:\\Users\\bob\\OneDrive\\Desktop\\file.dll"
+                // Setter Logic:
+                setterIL.Emit(OpCodes.Ldarg_0); // Load 'this' (the object instance)
+                setterIL.Emit(OpCodes.Ldarg_1); // Load the new value (first argument)
+                setterIL.Emit(OpCodes.Stfld, fields[cellName]); // Store value in the field
+
+                // Dependency recalculation:
+                foreach (var depCell in deps)
+                {
+                    if (computeFuncs.TryGetValue(depCell, out MethodBuilder? b))
+                    {
+                        setterIL.Emit(OpCodes.Ldarg_0);  // Load 'this' 
+                        setterIL.Emit(OpCodes.Callvirt, b); // Call compute_[depCell]
+                    }
+                }
+
+                setterIL.Emit(OpCodes.Ret);
             }
-            catch {
-            }
-            
-            //save to desktop
+            tb.CreateType();
+            ab.Save("C:\\Users\\bob\\OneDrive\\Desktop\\"+name+".dll");
         }
     }
 }

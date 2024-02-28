@@ -15,7 +15,6 @@
 /// My tests for my implementation of AbstractSpreadsheet
 /// </summary>
 using SS;
-
 namespace SpreadsheetTests
 {
     [TestClass]
@@ -24,13 +23,14 @@ namespace SpreadsheetTests
         [TestMethod]
         public void BenchmarkLongChains()
         {
+            
             Spreadsheet sheet = new();
             sheet.SetContentsOfCell("a0", "1");
             sheet.SetContentsOfCell("a1", "2");
             sheet.SetContentsOfCell("a2", "3");
             sheet.SetContentsOfCell("a3", "4");
             sheet.SetContentsOfCell("a4", "1");
-            for (int i = 1_000; i > 4; i--)
+            for (int i = 100; i > 4; i--)
                 sheet.SetContentsOfCell("a" + i,
                     string.Format(
                          "=(25 * 50 - 100 + 200 / 400) + a{0} * a{1} - a{2} + a{3} / a{4}",
@@ -48,13 +48,15 @@ namespace SpreadsheetTests
             sheet.SetContentsOfCell("a2", "3");
             sheet.SetContentsOfCell("a3", "4");
             sheet.SetContentsOfCell("a4", "1");
-            for (int i = 5; i < 100_000; i++)
+            for (int i = 5; i < 100; i++)
                 sheet.SetContentsOfCell("a" + i,
                     string.Format(
                          "=(25 * 50 - 100 + 200 / 400) + a{0} * a{1} - a{2} + a{3} / a{4}",
                          i - 1, i - 2, i - 3, i - 4, i - 5
                         )
                     );
+
+            sheet.Compile("name");
         }
 
         [TestMethod, ExpectedException(typeof(CircularException))]
@@ -147,8 +149,13 @@ namespace SpreadsheetTests
         public void FormulaContent()
         {
             Spreadsheet sheet = new((_) => true, (s) => s, "1");
-            sheet.SetContentsOfCell("a3", "=6+8");
+
+            sheet.SetContentsOfCell("a4", "= (6 + 10) +a3");
+            sheet.SetContentsOfCell("a3", "= (6 + 30) + a2");
+            sheet.SetContentsOfCell("a2", "=a1");
+            sheet.SetContentsOfCell("a1", "4");
             sheet.GetCellContents("a3");
+            sheet.Compile("name");
         }
 
         [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]

@@ -12,10 +12,4 @@
     <ProjectReference Include="..\Formula\Formula.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="CompilerTest">
-      <HintPath>..\CompilerTest\bin\Debug\CompilerTest.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 </Project>

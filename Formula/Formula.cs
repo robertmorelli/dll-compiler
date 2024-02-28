@@ -381,12 +381,11 @@ namespace SpreadsheetUtilities
                                                    //(LeftChild != null ? (HasConstValue ? "=" + constValue : "") : "");
             }
 
-            public void Compile(ILGenerator gen) {
-                if (RightChild != null || LeftChild != null) {
-                    RightChild?.Compile(gen);
-                    RightChild?.Compile(gen);
-                    primary.Compile(gen);
-                }
+            public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
+            {
+                RightChild?.Compile(gen, fields);
+                LeftChild?.Compile(gen, fields);
+                primary.Compile(gen, fields);
             }
 
             //who said there were no pointers in "safe" c#?
@@ -489,13 +488,21 @@ namespace SpreadsheetUtilities
                     return TokenType.val;
                 }
             }
-            public void Compile(ILGenerator gen) {
+            public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
+            {
                 if (isAdd) gen.Emit(OpCodes.Add);
                 else if (isSub) gen.Emit(OpCodes.Sub);
                 else if (isDiv) gen.Emit(OpCodes.Div);
                 else if (isMult) gen.Emit(OpCodes.Mul);
-                else if (isImm) gen.Emit(OpCodes.Ldc_R8, double.Parse(primativeString));
-                else if (is)
+                else if (isImm)
+                {
+                    gen.Emit(OpCodes.Ldc_R8, double.Parse(primativeString));
+                }
+                else if (isVar)
+                {
+                    gen.Emit(OpCodes.Ldarg_0);
+                    gen.Emit(OpCodes.Ldfld, fields[primativeString]);
+                }
             }
         }
 
@@ -667,8 +674,9 @@ namespace SpreadsheetUtilities
             };
         }
 
-        public void Compile(ILGenerator gen) {
-            ExecutableAst.Compile(gen);
+        public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
+        {
+            ExecutableAst.Compile(gen, fields);
         }
     }
 
