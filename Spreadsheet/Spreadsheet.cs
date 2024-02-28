@@ -542,30 +542,25 @@ namespace SS
             var tb = mob.DefineType("sheetspace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
 
 
-
-            ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
-            ILGenerator ctorIL = ctor.GetILGenerator();
-
-
             var fields = new Dictionary<string, FieldBuilder>();
             var computeFuncs = new Dictionary<string, MethodBuilder>();
 
             //define all fields and getters
             foreach (var cellName in cells.Keys)
             {
-                if (cells[cellName] is StringCell || cells[cellName].Value is not double d) continue;
-                FieldBuilder fb = tb.DefineField("_" + cellName, typeof(double), FieldAttributes.Private);//make readonly if cells[cellName] is FormulaCell
+                if (cells[cellName] is StringCell || cells[cellName].Value is not double) continue;
+                var fb = tb.DefineField("_" + cellName, typeof(double), FieldAttributes.Private);//make readonly if cells[cellName] is FormulaCell
                 fields[cellName] = fb;
-                MethodBuilder getterMethod = tb.DefineMethod("Get_" + cellName, MethodAttributes.Public , typeof(double), Type.EmptyTypes);
-                ILGenerator getterIL = getterMethod.GetILGenerator();
+                var getterMethod = tb.DefineMethod("Get_" + cellName, MethodAttributes.Public , typeof(double), Type.EmptyTypes);
+                var getterIL = getterMethod.GetILGenerator();
                 getterIL.Emit(OpCodes.Ldarg_0);
                 getterIL.Emit(OpCodes.Ldfld, fields[cellName]);
                 getterIL.Emit(OpCodes.Ret);
             }
 
             //define constructor
-            ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
-            ILGenerator ctorIL = ctor.GetILGenerator();
+            var ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
+            var ctorIL = ctor.GetILGenerator();
             foreach (var cellName in cells.Keys)
             {
                 if (cells[cellName] is StringCell || cells[cellName].Value is not double d) continue;
@@ -622,6 +617,7 @@ namespace SS
                 setterIL.Emit(OpCodes.Ret);
             }
             tb.CreateType();
+            
             var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             var fullPath = Path.Combine(desktopPath, name + ".dll");
             ab.Save(fullPath);
