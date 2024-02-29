@@ -235,11 +235,11 @@ namespace Spreadsheet
                             visited.Add(frame.name);
                             frame.firstHalf = false;
                             VirtualCallStack.Push(frame);
-                            foreach (string dep in _spreadsheet.GetDirectDependents(frame.name))
+                            foreach (var dep in _spreadsheet.GetDirectDependents(frame.name))
                             {
                                 if (!visited.Contains(dep))
                                 {
-                                    VirtualCallStack.Push(new() { name = dep, firstHalf = true });
+                                    VirtualCallStack.Push(new RecomputeStackFrame { name = dep, firstHalf = true });
                                 }
                             }
                         }
