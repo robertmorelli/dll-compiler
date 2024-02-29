@@ -287,8 +287,8 @@ namespace Formula
             {
                 if (_primary.IsValue) return this;
                 if (HasConstValue) return new TokenNode(new Token(_constValue.ToString("F")), null, null);
-                
-                if (!(LeftChild != null && RightChild != null)) return this;
+
+                if (_primary.isVar) return this;
                 var realLeft = ((TokenNode)LeftChild).Optimized(unsafeOptimizations);
                 var realRight = ((TokenNode)RightChild).Optimized(unsafeOptimizations);
                 if (_primary.isAdd)
@@ -336,7 +336,7 @@ namespace Formula
                 // TODO: (k1 * %1) + %1, k2 = k1 + 1, do k2 * %
                 
 
-                return this;
+                return new TokenNode(this._primary, realLeft, realRight);
             }
 
             public readonly bool IsDbzConst()

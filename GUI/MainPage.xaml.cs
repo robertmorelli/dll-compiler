@@ -11,10 +11,10 @@ namespace GUI
         static readonly int columns = 26;
         static readonly int widths = 400;
         static readonly int heights = 30;
-        internal Spreadsheet.Spreadsheet spreadsheet;
-        internal Dictionary<string, Label> labels = [];
-        internal int entryI = 0;
-        internal int entryJ = 0;
+        private Spreadsheet.Spreadsheet spreadsheet;
+        private Dictionary<string, Label> labels = [];
+        private int entryI = 0;
+        private int entryJ = 0;
         public MainPage()
         {
             spreadsheet = new();

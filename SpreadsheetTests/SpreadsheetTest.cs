@@ -150,9 +150,9 @@ namespace SpreadsheetTests
         {
             Spreadsheet.Spreadsheet sheet = new((_) => true, (s) => s, "1");
 
-            sheet.SetContentsOfCell("a4", "= (6 + 10) +a3");
-            sheet.SetContentsOfCell("a3", "= (6 + 30) + a2");
-            sheet.SetContentsOfCell("a2", "=a1");
+            sheet.SetContentsOfCell("a4", "=  a3 + 20 * 10");
+            sheet.SetContentsOfCell("a3", "=  a2 + 6 * 30");
+            sheet.SetContentsOfCell("a2", "= a1 / 2");
             sheet.SetContentsOfCell("a1", "4");
             sheet.GetCellContents("a3");
             sheet.Compile("name");
