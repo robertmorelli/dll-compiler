@@ -23,7 +23,7 @@
         </Border>
 
         <!-- the column headers: A, B, C, ... -->
-        <HorizontalStackLayout x:Name="TopLabels" BackgroundColor="Yellow"/>
+        <HorizontalStackLayout x:Name="TopLabels"/>
 
         <!-- the Grid of Spreadsheet GUI Cells -->
         <ScrollView
@@ -37,6 +37,7 @@
                 <VerticalStackLayout x:Name="Grid"        BackgroundColor="LightGoldenrodYellow"></VerticalStackLayout>
             </HorizontalStackLayout>
         </ScrollView>
+
     </VerticalStackLayout>
 
 
