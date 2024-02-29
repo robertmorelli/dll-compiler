@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="GUI.MainPage">
 
+    
     <ContentPage.MenuBarItems>
         <MenuBarItem Text="File">
             <MenuFlyoutItem Text="New" Clicked="FileMenuNew"/>
@@ -10,6 +11,7 @@
             <MenuFlyoutItem Text="Help" Clicked="FileMenuHelp"/>
         </MenuBarItem>
     </ContentPage.MenuBarItems>
+    
 
     <VerticalStackLayout x:Name="Entire">
 

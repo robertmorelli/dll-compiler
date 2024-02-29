@@ -10,17 +10,17 @@ namespace GUI
         static readonly int columns = 10;
         static readonly int widths = 400;
         static readonly int heights = 30;
-        internal Spreadsheet spreadsheet;
-        internal Dictionary<string, Label> labels = [];
-        internal int entryI = 0;
-        internal int entryJ = 0;
+        private Spreadsheet spreadsheet;
+        private Dictionary<string, Label> labels = [];
+        private int entryI = 0;
+        private int entryJ = 0;
         public MainPage() //might need to change how this is loaded
         {
-            
 
             spreadsheet = new(s => true, s => s.ToUpper(), "six");
             InitializeComponent();
-            VerticalStackLayout gridholder = FindByName("Grid") as VerticalStackLayout;
+            var gridHolder = FindByName("Grid") as VerticalStackLayout;
+            
             Grid grid = new()
             {
                 RowDefinitions = new RowDefinitionCollection(
@@ -39,7 +39,7 @@ namespace GUI
             grid.GestureRecognizers.Add(taps);
 
 
-            gridholder?.Add(grid);
+            gridHolder?.Add(grid);
         }
 
         private void OnGridTapped(TappedEventArgs e, Grid grid)
@@ -180,20 +180,3 @@ namespace GUI
 
     }
 }
-
-
-
-/*for (int i = 0; i < rows; i++)
-    for (int j = 0; j < columns; j++)
-        grid.Add(
-            new Label
-            {
-                Text = $"Row {i}, Col {j}",
-                BackgroundColor = Colors.Azure
-            }, j, i);*/
-/*
- * 
- * 
- * 
-
-*/
