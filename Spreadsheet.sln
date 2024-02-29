@@ -23,7 +23,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GUI", "GUI\GUI.csproj", "{2
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{AA6582C2-7010-4A8D-8954-2840A7F866A8}"
 	ProjectSection(SolutionItems) = preProject
-		..\..\..\..\OneDrive\Desktop\name.dll = ..\..\..\..\OneDrive\Desktop\name.dll
+		Solution Items\name.dll = Solution Items\name.dll
 	EndProjectSection
 EndProject
 Global
