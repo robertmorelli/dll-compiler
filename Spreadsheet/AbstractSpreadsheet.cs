@@ -34,6 +34,7 @@
 
 using System;
 using System.Collections.Generic;
+using Formula;
 using SpreadsheetUtilities;
 namespace SS
 {
@@ -289,7 +290,7 @@ namespace SS
         ///     evaluated, followed by B1 re-evaluated, followed by C1 re-evaluated.
         ///   </para>
         /// </returns>
-        protected abstract IList<String> SetCellContents(String name, Formula formula);
+        protected abstract IList<String> SetCellContents(String name, Formula.Formula formula);
 
 
         /// <summary>
@@ -471,7 +472,7 @@ namespace SS
         ///   If the name parameter is invalid, throw an InvalidNameException
         /// </exception>
         /// 
-        /// <exception cref="SpreadsheetUtilities.FormulaFormatException"> 
+        /// <exception cref="FormulaFormatException"> 
         ///   If the content is "=XYZ" where XYZ is an invalid formula, throw a FormulaFormatException.
         /// </exception>
         /// 

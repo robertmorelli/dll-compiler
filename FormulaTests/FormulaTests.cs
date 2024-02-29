@@ -23,6 +23,7 @@ using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
+using Formula;
 
 namespace FormulaTests
 {
@@ -45,9 +46,9 @@ namespace FormulaTests
         /// <returns></returns>
         static string createTestCase(Dictionary<string, int> lookupDict, bool errorVar)
         {
-            Random random = new Random();
-            int expansions = 1000;
-            var CFG = new Dictionary<string, List<GetAChild>> {
+            var random = new Random();
+            var expansions = 1000;
+            var cfg = new Dictionary<string, List<GetAChild>> {
                 {"&S",new List<GetAChild>{() => "&E" } },
                 {"&E" ,new List<GetAChild>{
                     () => "&T",
@@ -78,22 +79,26 @@ namespace FormulaTests
                         return "&E&W&O&W&E";
                     },
                 }},
-                {"&T" ,new List<GetAChild>{
-                    () => random.Next(1, 1000).ToString(),
-                    () => {
-                        string key = GenerateRandomAlphabeticString(random.Next(1, 4))+random.Next(1, 1000).ToString();
-                        if (lookupDict.ContainsKey(key))
+                {"&T" , [
+                        () => random.Next(1, 1000).ToString(),
+                        () =>
                         {
-                            return key;
+                            var key = GenerateRandomAlphabeticString(random.Next(1, 4)) +
+                                      random.Next(1, 1000).ToString();
+                            if (lookupDict.ContainsKey(key))
+                            {
+                                return key;
+                            }
+                            else
+                            {
+                                var val = random.Next(1, 1000);
+                                lookupDict.Add(key, val);
+                                return key;
+                            }
                         }
-                        else
-                        {
-                            int val = random.Next(1, 1000);
-                            lookupDict.Add(key, val);
-                            return key;
-                        }
-                    },
-                }},
+
+                    ]
+                },
                 {"&O" ,new List<GetAChild>{
                     () => "+",
                     () => "-",
@@ -113,9 +118,9 @@ namespace FormulaTests
                 }},
             };
 
-            string exp = "&S";
+            var exp = "&S";
             var tokenIdentifier = new Regex("(&[WSTOE])");
-            while (exp.Contains("&"))
+            while (exp.Contains('&'))
             {
                 var tokens = Regex.Split(exp, tokenIdentifier.ToString());
                 exp = "";
@@ -129,7 +134,7 @@ namespace FormulaTests
                             errorVar = false;
                         }
 
-                        var possibilities = CFG.GetValueOrDefault(token, [() => "1"]);
+                        var possibilities = cfg.GetValueOrDefault<string,List<GetAChild>>(token, [() => "1"]);
                         if (expansions < 0)
                         {
                             exp += possibilities[0].Invoke();
@@ -157,14 +162,14 @@ namespace FormulaTests
         /// <returns>
         /// the random string
         /// </returns>
-        static string GenerateRandomAlphabeticString(int length)
+        private static string GenerateRandomAlphabeticString(int length)
         {
-            string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-            Random random = new Random();
-            char[] randomChars = new char[length];
-            for (int i = 0; i < length; i++)
+            const string alphabet = @"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+            var random = new Random();
+            var randomChars = new char[length];
+            for (var i = 0; i < length; i++)
             {
-                int randomIndex = random.Next(0, alphabet.Length);
+                var randomIndex = random.Next(0, alphabet.Length);
                 randomChars[i] = alphabet[randomIndex];
             }
             return new string(randomChars);
@@ -174,21 +179,21 @@ namespace FormulaTests
         [ExpectedException(typeof(FormulaFormatException))]
         public void DivByZeroConst()
         {
-            var a = new Formula("a1/0");
+            var a = new Formula.Formula("a1/0");
             a.Evaluate((_) => 1);
         }
 
         [ExpectedException(typeof(FormulaFormatException))]
         public void DivByZeroConstParens()
         {
-            var a = new Formula("a1/(0)");
+            var a = new Formula.Formula("a1/(0)");
             a.Evaluate((_) => 1);
         }
 
         [ExpectedException(typeof(FormulaFormatException))]
         public void DivByZeroVar()
         {
-            var a = new Formula("5/(1-a1)");
+            var a = new Formula.Formula("5/(1-a1)");
             a.Evaluate((_) => 1);
         }
 
@@ -196,25 +201,25 @@ namespace FormulaTests
         [TestMethod]
         public void PreEvaluation1()
         {
-            var a = new Formula("(5+5)*a1");
+            var a = new Formula.Formula("(5+5)*a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void PreEvaluation2()
         {
-            var a = new Formula("(5+5)+a1");
+            var a = new Formula.Formula("(5+5)+a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void PreEvaluation3()
         {
-            var a = new Formula("(5+5)/a1");
+            var a = new Formula.Formula("(5+5)/a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void PreEvaluation4()
         {
-            var a = new Formula("(5+5)-a1");
+            var a = new Formula.Formula("(5+5)-a1");
             a.Evaluate((_) => 1);
         }
 
@@ -222,43 +227,43 @@ namespace FormulaTests
         [TestMethod]
         public void DoNothingOperations1()
         {
-            var a = new Formula("1*a1");
+            var a = new Formula.Formula("1*a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void DoNothingOperations2()
         {
-            var a = new Formula("a1*1");
+            var a = new Formula.Formula("a1*1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void DoNothingOperations3()
         {
-            var a = new Formula("0+a1");
+            var a = new Formula.Formula("0+a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void DoNothingOperations4()
         {
-            var a = new Formula("a1+0");
+            var a = new Formula.Formula("a1+0");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void DoNothingOperations5()
         {
-            var a = new Formula("a1-0");
+            var a = new Formula.Formula("a1-0");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void DoNothingOperations6()
         {
-            var a = new Formula("0/a1");
+            var a = new Formula.Formula("0/a1");
             a.Evaluate((_) => 1);
         }
         [TestMethod]
         public void DoNothingOperations7()
         {
-            var a = new Formula("a1/1");
+            var a = new Formula.Formula("a1/1");
             a.Evaluate((_) => 1);
         }
 
@@ -266,7 +271,7 @@ namespace FormulaTests
         [TestMethod]
         public void UnsafeRecipricolDivision()
         {
-            var a = new Formula("a1/2");
+            var a = new Formula.Formula("a1/2");
             a.Evaluate((_) => 1);
         }
 
@@ -274,22 +279,22 @@ namespace FormulaTests
         [TestMethod]
         public void SpaceDotEquality()
         {
-            var a = new Formula("a1/2");
-            var b = new Formula("a1 / 2");
+            var a = new Formula.Formula("a1/2");
+            var b = new Formula.Formula("a1 / 2");
             Assert.AreEqual(true, a.Equals(b));
         }
         [TestMethod]
         public void SpaceEqualsEquality()
         {
-            var a = new Formula("a1/2");
-            var b = new Formula("a1 / 2");
+            var a = new Formula.Formula("a1/2");
+            var b = new Formula.Formula("a1 / 2");
             Assert.AreEqual(true, a == b);
         }
         [TestMethod]
         public void SpaceNotEqualsEquality()
         {
-            var a = new Formula("a1/2");
-            var b = new Formula("a1 / 2");
+            var a = new Formula.Formula("a1/2");
+            var b = new Formula.Formula("a1 / 2");
             Assert.AreEqual(false, a != b);
         }
 
@@ -297,7 +302,7 @@ namespace FormulaTests
         [TestMethod]
         public void GetVariables()
         {
-            var a = new Formula("a1/2");
+            var a = new Formula.Formula("a1/2");
             Assert.AreEqual("a1", a.GetVariables().First());
         }
 
@@ -305,7 +310,7 @@ namespace FormulaTests
         [TestMethod]
         public void ClosingParensAddativeAndMult()
         {
-            var a = new Formula("5*(6+4)");
+            var a = new Formula.Formula("5*(6+4)");
             a.Evaluate((_) => 1);
         }
 
@@ -313,7 +318,7 @@ namespace FormulaTests
         [TestMethod]
         public void AddTwice()
         {
-            var a = new Formula("5+5+5");
+            var a = new Formula.Formula("5+5+5");
             a.Evaluate((_) => 1);
         }
 
@@ -321,7 +326,7 @@ namespace FormulaTests
         [ExpectedException(typeof(FormulaError))]
         public void SyntaxErrorParens0()
         {
-            var a = new Formula("(");
+            var a = new Formula.Formula("(");
             Assert.AreEqual(15, a.Evaluate((_) => 1));
         }
 
@@ -329,35 +334,35 @@ namespace FormulaTests
         [ExpectedException(typeof(FormulaError))]
         public void SyntaxErrorParens1()
         {
-            var a = new Formula("(5+5+5");
+            var a = new Formula.Formula("(5+5+5");
             Assert.AreEqual(15, a.Evaluate((_) => 1));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void SyntaxErrorParens2()
         {
-            var a = new Formula("5+5+5)");
+            var a = new Formula.Formula("5+5+5)");
             Assert.AreEqual(15, a.Evaluate((_) => 1));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void SyntaxErrorUnaryPlus()
         {
-            var a = new Formula("5++5");
+            var a = new Formula.Formula("5++5");
             Assert.AreEqual(10, a.Evaluate((_) => 1));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void SyntaxErrorUnaryMius()
         {
-            var a = new Formula("-5");
+            var a = new Formula.Formula("-5");
             Assert.AreEqual(-5, a.Evaluate((_) => 1));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void NullVar()
         {
-            var a = new Formula("a1");
+            var a = new Formula.Formula("a1");
             double[] d = { 5 };
             Assert.AreEqual(5, a.Evaluate((_) => d[8]));
         }
@@ -365,21 +370,21 @@ namespace FormulaTests
         [ExpectedException(typeof(FormulaError))]
         public void NoVar()
         {
-            var a = new Formula("a1", (s) => s, (_) => false);
+            var a = new Formula.Formula("a1", (s) => s, (_) => false);
             Assert.AreEqual(5, a.Evaluate((_) => 5));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void EqualsNull()
         {
-            var a = new Formula("1");
+            var a = new Formula.Formula("1");
             Assert.AreEqual(true, a.Equals(null));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void EqualsOtherObj()
         {
-            object a = new Formula("1");
+            object a = new Formula.Formula("1");
             object o = "hi";
             Assert.AreEqual(true, a.Equals(o));
         }
@@ -387,28 +392,28 @@ namespace FormulaTests
         [ExpectedException(typeof(FormulaError))]
         public void ErrorTokens()
         {
-            object a = new Formula("05.09.2001");
+            object a = new Formula.Formula("05.09.2001");
             Assert.AreEqual(true, a.Equals(5));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void ErrorToken()
         {
-            object a = new Formula("$");
+            object a = new Formula.Formula("$");
             Assert.AreEqual(true, a.Equals("$"));
         }
 
         [ExpectedException(typeof(FormulaError))]
         public void ErrorTokenMult()
         {
-            object a = new Formula("*5");
+            object a = new Formula.Formula("*5");
             Assert.AreEqual(true, a.Equals("5"));
         }
 
         [TestMethod]
         public void Example()
         {
-            var a = new Formula("a1 / (3 - 1)");
+            var a = new Formula.Formula("a1 / (3 - 1)");
             a.Evaluate((_)=>1);
         }
 
@@ -428,7 +433,7 @@ namespace FormulaTests
                 testCase = createTestCase(lookupDict, false);
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     Console.WriteLine(string.Format("{0} = {1}", testCase, result));
                 }
                 catch (Exception e)
@@ -443,7 +448,7 @@ namespace FormulaTests
                 testCase = testCase.Insert(random.Next(0, testCase.Length), new List<string> { "(", ")" }[random.Next(0, 1)]);
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("(should be invalid case) test failed for {0}", testCase));
                 }
                 catch (Exception)
@@ -456,7 +461,7 @@ namespace FormulaTests
                 testCase = "-" + testCase;
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
                 catch (Exception)
@@ -469,7 +474,7 @@ namespace FormulaTests
                 testCase = testCase + "-";
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
                 catch (Exception)
@@ -482,7 +487,7 @@ namespace FormulaTests
                 testCase = testCase + "+";
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
                 catch (Exception)
@@ -496,7 +501,7 @@ namespace FormulaTests
                 testCase = "+" + testCase;
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
                 catch (Exception)
@@ -509,7 +514,7 @@ namespace FormulaTests
                 testCase = testCase + "/0";
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
                 catch (Exception)
@@ -523,7 +528,7 @@ namespace FormulaTests
                 testCase = testCase + "/(3-3)";
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
                 catch (Exception)
@@ -536,7 +541,7 @@ namespace FormulaTests
                 testCase = createTestCase(lookupDict, true);
                 try
                 {
-                    result = new Formula(testCase).Evaluate(lu);
+                    result = new Formula.Formula(testCase).Evaluate(lu);
                     System.Console.WriteLine(string.Format("test failed for {0}", testCase));
                 }
                 catch (Exception)

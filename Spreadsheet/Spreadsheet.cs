@@ -21,6 +21,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Formula;
 using SpreadsheetUtilities;
 using SS;
 
@@ -128,7 +129,7 @@ namespace Spreadsheet
         /// </summary>
         /// <param name="f">the formula</param>
         /// <param name="s">a reference to the spreadsheet to access other cells</param>
-        private struct FormulaCell(Formula f, Spreadsheet s) : ICell
+        private struct FormulaCell(Formula.Formula f, Spreadsheet s) : ICell
         {
             public readonly object Contents(bool forSave) => (forSave ? "=" : "") + _content;
             public readonly object Value => _currentValue;
@@ -157,7 +158,7 @@ namespace Spreadsheet
             public readonly bool Equals(ICell? other) =>
                 (other is FormulaCell) && (other.CompItem == CompItem);
 
-            private readonly Formula _content = f;
+            private readonly Formula.Formula _content = f;
             private readonly Spreadsheet _spreadsheet = s;
             private readonly double Lookup(string s)
             {
@@ -323,7 +324,7 @@ namespace Spreadsheet
             return deps;
         }
 
-        protected override IList<string> SetCellContents(string name, Formula formula)
+        protected override IList<string> SetCellContents(string name, Formula.Formula formula)
         {
             //check if depends on its own vars
             if (formula.GetVariables().Contains(name)) throw new CircularException();
@@ -522,7 +523,7 @@ namespace Spreadsheet
             if (Utility.IsInvalidName(name)) throw new InvalidNameException();
             Changed = true;
             return double.TryParse(content, out var d) ? SetCellContents(name, d) :
-                    content.StartsWith('=') ? SetCellContents(name, new Formula(content[1..], Normalize, IsValid)) :
+                    content.StartsWith('=') ? SetCellContents(name, new Formula.Formula(content[1..], Normalize, IsValid)) :
                     SetCellContents(name, content);
         }
 

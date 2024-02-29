@@ -255,28 +255,33 @@ namespace FormulaEvaluatorTester
                         }
                     },
                 }},
-                {"&O" ,new List<GetAChild>{
-                    () => "+",
-                    () => "-",
-                    () => "/",
-                    () => "*",
-                }},
+                {"&O" , [
+                        () => "+",
+                        () => "-",
+                        () => "/",
+                        () => "*"
+                    ]
+                },
 
-                {"&W" ,new List<GetAChild>{
-                    () => {
-                        string space = "";
-                        for(int i = 0; i < random.Next(0,4); i++)
+                {"&W" , [
+                        () =>
                         {
-                            space += " ";
+                            var space = "";
+                            for (int i = 0; i < random.Next(0, 4); i++)
+                            {
+                                space += " ";
+                            }
+
+                            return space;
                         }
-                        return space;
-                    },
-                }},
+
+                    ]
+                },
             };
 
             string exp = "&S";
             var tokenIdentifier = new Regex("(&[WSTOE])");
-            while (exp.Contains("&")) {
+            while (exp.Contains('&')) {
                 var tokens = Regex.Split(exp, tokenIdentifier.ToString());
                 exp = "";
                 foreach (var token in tokens) {
@@ -287,7 +292,7 @@ namespace FormulaEvaluatorTester
                             errorVar = false;
                         }
 
-                        var possibilities = CFG.GetValueOrDefault(token, [() => "1"]);
+                        var possibilities = CFG.GetValueOrDefault<string,List<GetAChild>>(token, [() => "1"]);
                         if (expansions < 0)
                         {
                             exp += possibilities[0].Invoke();

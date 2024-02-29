@@ -23,7 +23,7 @@
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 
-namespace SpreadsheetUtilities
+namespace Formula
 {
 
     public static partial class Utility
@@ -33,13 +33,13 @@ namespace SpreadsheetUtilities
         //no backtracking makes this a DFA instead of NFA
         //GeneratedRegex makes these all compiled at compile time
         //(as opposed to run time)
-        const RegexOptions ro =
-            RegexOptions.IgnorePatternWhitespace |
-            RegexOptions.NonBacktracking;
+        private const RegexOptions RegexOptions =
+            System.Text.RegularExpressions.RegexOptions.IgnorePatternWhitespace |
+            System.Text.RegularExpressions.RegexOptions.NonBacktracking;
 
-        [GeneratedRegex(@"^\s*$", options: ro)] public static partial Regex isWhiteSpaceRegex();
-        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z\d]*$", options: ro)] public static partial Regex isVariableRegex();
-        [GeneratedRegex(@"\b|([\-)*(+/])", options: ro)] public static partial Regex bounderies();
+        [GeneratedRegex(@"^\s*$", options: RegexOptions)] public static partial Regex IsWhiteSpaceRegex();
+        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z\d]*$", options: RegexOptions)] public static partial Regex IsVariableRegex();
+        [GeneratedRegex(@"\b|([\-)*(+/])", options: RegexOptions)] public static partial Regex Boundaries();
     }
 
     /// <summary>
@@ -75,12 +75,12 @@ namespace SpreadsheetUtilities
         {
         }
 
-        private readonly Token[] Tokens;
-        private readonly string[] VarTokens;
-        public TokenNode ExecutableAst;
-        private readonly bool ThrowDBZEveryTime = false;
-        private int HashCodeCash = 0;
-        private bool HasHashCode = false;
+        private readonly Token[] _tokens;
+        private readonly string[] _varTokens;
+        private TokenNode _executableAst;
+        private readonly bool _throwDbzEveryTime = false;
+        private int _hashCodeCash = 0;
+        private bool _hasHashCode = false;
 
         /// <summary>
         /// Creates a Formula from a string that consists of an infix expression written as
@@ -108,21 +108,21 @@ namespace SpreadsheetUtilities
         {
             var valueStack = new Stack<TokenNode>();
             var operatorStack = new Stack<Token>();
-            var tokenProcessor = generateTokenProcessorDictionary(valueStack, operatorStack, isValid);
-            Tokens = GetNormalTokens(formula, normalize, isValid).ToArray();
-            if (Tokens.Length == 0) throw new FormulaFormatException("nothin");
+            var tokenProcessor = GenerateTokenProcessorDictionary(valueStack, operatorStack, isValid);
+            _tokens = GetNormalTokens(formula, normalize, isValid).ToArray();
+            if (_tokens.Length == 0) throw new FormulaFormatException("nothing");
 
-            tokenProcessor[TokenType.openParen](new Token("("));
-            foreach (var token in Tokens) tokenProcessor[token.Type](token);
-            tokenProcessor[TokenType.closedParen](new Token("("));
-            tokenProcessor[TokenType.multiplicative](new Token("*"));
-            tokenProcessor[TokenType.val](new Token("1"));
+            tokenProcessor[TokenType.OpenParen](new Token("("));
+            foreach (var token in _tokens) tokenProcessor[token.Type](token);
+            tokenProcessor[TokenType.ClosedParen](new Token("("));
+            tokenProcessor[TokenType.Multiplicative](new Token("*"));
+            tokenProcessor[TokenType.Val](new Token("1"));
 
-            ExecutableAst = valueStack.Pop();
+            _executableAst = valueStack.Pop();
             if ((valueStack.Count > 0) || (operatorStack.Count > 0)) throw new FormulaFormatException("unmatched parenthesis or other operator");
-            ThrowDBZEveryTime = ExecutableAst.IsDBZConst();
-            ExecutableAst = ExecutableAst.Optmizied();
-            VarTokens = Tokens
+            _throwDbzEveryTime = _executableAst.IsDbzConst();
+            _executableAst = _executableAst.Optimized();
+            _varTokens = _tokens
                 .Where((token) => token.isVar)
                 .Select((token) => token.primativeString)
                 .Distinct()
@@ -152,8 +152,8 @@ namespace SpreadsheetUtilities
         /// </summary>
         public object Evaluate(Func<string, double> lookup)
         {
-            if (ThrowDBZEveryTime) return new FormulaError("divide by zero for string: " + ToString());
-            try { return ExecutableAst.Value(lookup); }
+            if (_throwDbzEveryTime) return new FormulaError("divide by zero for string: " + ToString());
+            try { return _executableAst.Value(lookup); }
             catch (Exception e) { return new FormulaError(ToString() + " : " + e.Message); }
         }
 
@@ -168,7 +168,7 @@ namespace SpreadsheetUtilities
         /// new Formula("x+X*z", N, s => true).GetVariables() should enumerate "X" and "Z".
         /// new Formula("x+X*z").GetVariables() should enumerate "x", "X", and "z".
         /// </summary>
-        public IEnumerable<string> GetVariables() => VarTokens;
+        public IEnumerable<string> GetVariables() => _varTokens;
 
         /// <summary>
         /// Returns a string containing no spaces which, if passed to the Formula
@@ -181,7 +181,7 @@ namespace SpreadsheetUtilities
         /// new Formula("x + Y").ToString() should return "x+Y"
         /// </summary>
         public override string ToString() =>
-            Tokens
+            _tokens
                 .Select((token) => token.primativeString)
                 .Aggregate("", (a, b) => a + (a.Length > 0 ? " " : "") + b);
 
@@ -234,24 +234,21 @@ namespace SpreadsheetUtilities
         /// </summary>
         public override int GetHashCode()
         {
-            if (!HasHashCode)
-            {
-                HashCodeCash = ToString().GetHashCode();
-                HasHashCode = true;
-            }
-            return HashCodeCash;
+            if (_hasHashCode) return _hashCodeCash;
+            _hashCodeCash = ToString().GetHashCode();
+            _hasHashCode = true;
+            return _hashCodeCash;
         }
 
         //types of tokens for the parse algorithm
         public enum TokenType
         {
-            multiplicative = 0,
-            additive = 1,
-            var = 2,
-            val = 3,
-            openParen = 4,
-            closedParen = 5,
-            erroneous = 6,
+            Multiplicative = 0,
+            Additive = 1,
+            Var = 2,
+            Val = 3,
+            OpenParen = 4,
+            ClosedParen = 5,
         }
 
         /// <summary>
@@ -264,95 +261,93 @@ namespace SpreadsheetUtilities
             //non-optimizing constructor
             public TokenNode(Token primary, TokenNode? left, TokenNode? right)
             {
-                this.primary = primary;
+                this._primary = primary;
                 _leftRef = new(left);
                 _rightRef = new(right);
-                constValue = primary.isImm ? double.Parse(primary.primativeString) : double.NaN;
+                _constValue = primary.isImm ? double.Parse(primary.primativeString) : double.NaN;
                 if (LeftChild != null)
                     if (RightChild != null)
                     {
                         var realLeft = (TokenNode)LeftChild;
                         var realRight = (TokenNode)RightChild;
                         //NaN o K = NaN unless NaN * 0 in some cases does accidental optimizations to remove vars
-                        constValue = primary.primativeString switch
+                        _constValue = primary.primativeString switch
                         {
-                            "*" => realLeft.constValue * realRight.constValue,
-                            "/" => realLeft.constValue / realRight.constValue,
-                            "+" => realLeft.constValue + realRight.constValue,
-                            "-" => realLeft.constValue - realRight.constValue,
+                            "*" => realLeft._constValue * realRight._constValue,
+                            "/" => realLeft._constValue / realRight._constValue,
+                            "+" => realLeft._constValue + realRight._constValue,
+                            "-" => realLeft._constValue - realRight._constValue,
                             _ => double.NaN
                         };
                     }
             }
 
             //optimizes AST tree and returns best version this code can produce
-            public readonly TokenNode Optmizied(bool unsafeOptimizations = true)
+            public readonly TokenNode Optimized(bool unsafeOptimizations = true)
             {
-                if (primary.IsValue) return this;
-                if (HasConstValue) return new TokenNode(new Token(constValue.ToString()), null, null);
-                if (LeftChild != null && RightChild != null)
+                if (_primary.IsValue) return this;
+                if (HasConstValue) return new TokenNode(new Token(_constValue.ToString("F")), null, null);
+                
+                if (!(LeftChild != null && RightChild != null)) return this;
+                var realLeft = ((TokenNode)LeftChild).Optimized(unsafeOptimizations);
+                var realRight = ((TokenNode)RightChild).Optimized(unsafeOptimizations);
+                if (_primary.isAdd)
                 {
-                    var realLeft = ((TokenNode)LeftChild).Optmizied(unsafeOptimizations);
-                    var realRight = ((TokenNode)RightChild).Optmizied(unsafeOptimizations);
-                    if (primary.isAdd)
-                    {
-                        // 0 + % = %
-                        if (realLeft.constValue.Equals(0)) return realRight;
-                        // % + 0 = %
-                        if (realRight.constValue.Equals(0)) return realLeft;
-                    }
-                    if (primary.isMult)
-                    {
-                        // 1 * % = %
-                        if (realLeft.constValue.Equals(1)) return realRight;
-                        // % * 1 = % 
-                        if (realRight.constValue.Equals(1)) return realLeft;
-                    }
-                    if (primary.isSub)
-                    {
-                        // % - 0 = %
-                        if (realRight.constValue.Equals(0)) return realLeft;
-                    }
-                    if (primary.isDiv)
-                    {
-                        // % / 1 = %
-                        if (realRight.constValue.Equals(1)) return realLeft;
-                    }
-                    if (unsafeOptimizations)
-                    {
-                        //recipricol const division % / k1, k2 = 1/k1, do % * k2
-                        if (primary.isDiv && realRight.HasConstValue)
-                        {
-                            return new TokenNode(
-                                new Token("*"),
-                                realLeft,
-                                new TokenNode(
-                                    new Token(
-                                        (1 / realRight.constValue).ToString()),
-                                        null,
-                                        null
-                                ));
-                        }
-                        // TODO: tree balancing ((%1 * %2) * %3) * %4 = (%1 * %2) * (%3 * %4)
-                        // btw technically not valid for float types
-
-                        // TODO: %1 + %1 = 2 * %1
-                        // TODO: (k1 * %1) + %1, k2 = k1 + 1, do k2 * %
-                    }
-
+                    // 0 + % = %
+                    if (realLeft._constValue.Equals(0)) return realRight;
+                    // % + 0 = %
+                    if (realRight._constValue.Equals(0)) return realLeft;
                 }
+                if (_primary.isMult)
+                {
+                    // 1 * % = %
+                    if (realLeft._constValue.Equals(1)) return realRight;
+                    // % * 1 = % 
+                    if (realRight._constValue.Equals(1)) return realLeft;
+                }
+                if (_primary.isSub)
+                {
+                    // % - 0 = %
+                    if (realRight._constValue.Equals(0)) return realLeft;
+                }
+                if (_primary.isDiv)
+                {
+                    // % / 1 = %
+                    if (realRight._constValue.Equals(1)) return realLeft;
+                }
+                if (!unsafeOptimizations) return this;
+                //reciprocal const division % / k1, k2 = 1/k1, do % * k2
+                if (_primary.isDiv && realRight.HasConstValue)
+                {
+                    return new TokenNode(
+                        new Token("*"),
+                        realLeft,
+                        new TokenNode(
+                            new Token(
+                                (1 / realRight._constValue).ToString("F")),
+                                null,
+                                null
+                        ));
+                }
+                // TODO: tree balancing ((%1 * %2) * %3) * %4 = (%1 * %2) * (%3 * %4)
+                // btw technically not valid for float types
+
+                // TODO: %1 + %1 = 2 * %1
+                // TODO: (k1 * %1) + %1, k2 = k1 + 1, do k2 * %
+                
+
                 return this;
             }
 
-            public readonly bool IsDBZConst()
+            public readonly bool IsDbzConst()
             {
                 var rightMaybe = RightChild;
                 var leftMaybe = LeftChild;
                 if (rightMaybe == null || leftMaybe == null) return false;
                 var right = (TokenNode)rightMaybe;
                 var left = (TokenNode)leftMaybe;
-                if (right.IsDBZConst() || left.IsDBZConst()) return true;
-                return primary.isDiv && right.HasConstValue && right.constValue.Equals(0);
+                if (right.IsDbzConst() || left.IsDbzConst()) return true;
+                return _primary.isDiv && right is { HasConstValue: true, _constValue: 0 };
             }
 
             //does a preorder traversal lisp-y string for debugging "k" indicates calculated constant vals
@@ -362,8 +357,8 @@ namespace SpreadsheetUtilities
                 return
                     "\n" + new string(' ', depth * 4) +
                     (LeftChild != null ? "(" : "") +
-                    primary.primativeString.ToString() +
-                    (HasConstValue ? " K" + (LeftChild != null ? " :" + constValue : "") : "") +
+                    _primary.primativeString.ToString() +
+                    (HasConstValue ? " K" + (LeftChild != null ? " :" + _constValue : "") : "") +
                     LeftChild?.ToString2(lo, depth + 1) +
                     RightChild?.ToString2(lo, depth + 1) +
                     (LeftChild != null ? ("\n" + new string(' ', depth * 4) + ")") : "");
@@ -375,7 +370,7 @@ namespace SpreadsheetUtilities
                 return
                     (LeftChild != null ? "(" : "") +
                     LeftChild?.ToString(lo) +
-                    primary.primativeString.ToString() +
+                    _primary.primativeString.ToString() +
                     RightChild?.ToString(lo) +
                     (LeftChild != null ? ")" : "");// +
                                                    //(LeftChild != null ? (HasConstValue ? "=" + constValue : "") : "");
@@ -385,37 +380,37 @@ namespace SpreadsheetUtilities
             {
                 RightChild?.Compile(gen, fields);
                 LeftChild?.Compile(gen, fields);
-                primary.Compile(gen, fields);
+                _primary.Compile(gen, fields);
             }
 
             //who said there were no pointers in "safe" c#?
-            internal class ReferenceLMAO(TokenNode? tn) { public TokenNode? tn = tn; }
-            private readonly ReferenceLMAO _leftRef;
-            private readonly ReferenceLMAO _rightRef;
+            private class ReferenceLmao(TokenNode? tn) { public TokenNode? tn = tn; }
+            private readonly ReferenceLmao _leftRef;
+            private readonly ReferenceLmao _rightRef;
             //ease of use get from TokenNode*
-            public readonly TokenNode? LeftChild { get => _leftRef.tn; }
-            public readonly TokenNode? RightChild { get => _rightRef.tn; }
+            private readonly TokenNode? LeftChild { get => _leftRef.tn; }
+            private readonly TokenNode? RightChild { get => _rightRef.tn; }
 
             //primary token for this node
-            public readonly Token primary;
+            private readonly Token _primary;
 
-            //NaN indicates var dependance. sue me. cry about it. shout at the sky even
-            public readonly bool HasConstValue { get => !double.IsNaN(constValue); }
+            //NaN indicates var dependence. sue me. cry about it. shout at the sky even
+            private readonly bool HasConstValue => !double.IsNaN(_constValue);
 
             //for optimizing
-            public double constValue;
+            private readonly double _constValue;
 
             //should never really produce NaNs. I thing 10/(1/1E-25) or something might trigger this
             //you would have to divide by infinite
             public readonly double Value(Func<string, double> lookup)
             {
-                if (HasConstValue) return constValue;
-                if (primary.isVar) return lookup(primary.primativeString);
+                if (HasConstValue) return _constValue;
+                if (_primary.isVar) return lookup(_primary.primativeString);
                 if (LeftChild == null || RightChild == null) return double.NaN;
                 var leftValue = ((TokenNode)LeftChild).Value(lookup);
                 var rightValue = ((TokenNode)RightChild).Value(lookup);
-                if (rightValue.Equals(0) && primary.isDiv) throw new ArgumentException("divide by zero");
-                return primary.primativeString switch
+                if (rightValue.Equals(0) && _primary.isDiv) throw new ArgumentException("divide by zero");
+                return _primary.primativeString switch
                 {
                     "*" =>
                         leftValue * rightValue,
@@ -435,7 +430,7 @@ namespace SpreadsheetUtilities
         /// should probably be built with an enum
         /// TODO: build with enum
         /// </summary>
-        public struct Token
+        public readonly struct Token
         {
             /// <summary>
             /// these vars exist because im too lazy to make
@@ -444,23 +439,23 @@ namespace SpreadsheetUtilities
             /// </summary>
             //public bool IsOperation { get => IsAddative || IsMultiplicative || IsParens; }
             public readonly bool IsAddative { get => isAdd || isSub; }
-            public bool isAdd = false;
-            public bool isSub = false;
+            public readonly bool isAdd = false;
+            public readonly bool isSub = false;
             public readonly bool IsMultiplicative { get => isMult || isDiv; }
-            public bool isMult = false;
-            public bool isDiv = false;
-            public bool IsValue { get => isImm || isVar; }
-            public bool isImm = false;
-            public bool isVar = false;
+            public readonly bool isMult = false;
+            public readonly bool isDiv = false;
+            public bool IsValue => isImm || isVar;
+            public readonly bool isImm = false;
+            public readonly bool isVar = false;
             //public bool IsParens { get => isLParens || isRParens; }
-            public bool isLParens = false;
-            public bool isRParens = false;
-            public string primativeString;
+            public readonly bool isLParens = false;
+            public readonly bool isRParens = false;
+            public readonly string primativeString;
             public Token(string primative) : this(primative, (_) => _, (_) => true) { }
             public Token(string primative, Func<string, string> normalizer, Func<string, bool> isValid)
             {
-                isVar = Utility.isVariableRegex().IsMatch(primative);
-                if (isImm = double.TryParse(primative, out double d)) primativeString = d.ToString();
+                isVar = Utility.IsVariableRegex().IsMatch(primative);
+                if (isImm = double.TryParse(primative, out double d)) primativeString = d.ToString("F");
                 else if (isVar)
                 {
                     if (isValid(primative)) primativeString = normalizer(primative.Trim());
@@ -480,15 +475,15 @@ namespace SpreadsheetUtilities
             {
                 get
                 {
-                    if (IsAddative) return TokenType.additive;
-                    if (IsMultiplicative) return TokenType.multiplicative;
-                    if (isVar) return TokenType.var;
-                    if (isLParens) return TokenType.openParen;
-                    if (isRParens) return TokenType.closedParen;
-                    return TokenType.val;
+                    if (IsAddative) return TokenType.Additive;
+                    if (IsMultiplicative) return TokenType.Multiplicative;
+                    if (isVar) return TokenType.Var;
+                    if (isLParens) return TokenType.OpenParen;
+                    if (isRParens) return TokenType.ClosedParen;
+                    return TokenType.Val;
                 }
             }
-            public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
+            public readonly void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
             {
                 if (isAdd) gen.Emit(OpCodes.Add);
                 else if (isSub) gen.Emit(OpCodes.Sub);
@@ -520,13 +515,13 @@ namespace SpreadsheetUtilities
         {
             List<Token> ret = [];
             //slow plz fix
-            foreach (var s in Utility.bounderies().Split(formula))
-                if (!Utility.isWhiteSpaceRegex().IsMatch(s))
+            foreach (var s in Utility.Boundaries().Split(formula))
+                if (!Utility.IsWhiteSpaceRegex().IsMatch(s))
                     ret.Add(new(s, normalize, isValid));
             return ret;
         }
 
-        public delegate int Lookup(string variable_name);
+        public delegate int Lookup(string variableName);
 
         /// <summary>
         /// Generates a dictionary where the keys are regex that recognize the right thing to be parsed
@@ -542,7 +537,7 @@ namespace SpreadsheetUtilities
         /// <param name="operatorStack">
         /// The operator stack used by the delegates
         /// </param>
-        /// <param name="variableEvaluator">
+        /// <param name="isValid">
         /// The variable lookup used by the variable delegate
         /// </param>
         /// <returns>
@@ -552,78 +547,33 @@ namespace SpreadsheetUtilities
         /// This function will not throw errors, the returned delegates will throw errors
         /// for improper formulas
         /// </exception>
-        private static Dictionary<TokenType, TokenProcFunc> generateTokenProcessorDictionary(Stack<TokenNode> valueStack, Stack<Token> operatorStack, Func<string, bool> isValid)
+        private static Dictionary<TokenType, TokenProcFunc> GenerateTokenProcessorDictionary(Stack<TokenNode> valueStack, Stack<Token> operatorStack, Func<string, bool> isValid)
         {
-            /// <summary>
-            /// If * or / is at the top of the operator stack, pop the value stack,
-            /// pop the operator stack, and apply the popped operator to the popped
-            /// number and t. Push the result onto the value stack.
-            /// 
-            /// Otherwise, push t onto the value stack.
-            /// </summary>
-            void immFunc(Token token)
-            {
-                if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
-                {
-                    if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
-                    valueStack.Push(new TokenNode(
-                        operatorStack.Pop(),
-                        left: valueStack.Pop(),
-                        right: new TokenNode(token, null, null)
-                        ));
-                    return;
-                }
-                valueStack.Push(new TokenNode(token, null, null));
-            }
+            // dictionary of regex matched with correct response.
+            return new Dictionary<TokenType, TokenProcFunc> {
+                {TokenType.Val, ImmFunc },
+                {TokenType.Var, VarFunc },
+                {TokenType.Additive, AddativeFunc },
+                {TokenType.Multiplicative, Multiplicativefunc },
+                {TokenType.OpenParen, OpenParenFunc },
+                {TokenType.ClosedParen, CloseParenFunc },
+            };
 
             /// <summary>
             /// Proceed as above, using the looked-up value of t instead of t
             /// </summary>
-            void varFunc(Token token)
+            void VarFunc(Token token)
             {
                 if (!isValid(token.primativeString)) throw new ArgumentException("var bad");
-                immFunc(token);
+                ImmFunc(token);
             }
-
-            /// <summary>
-            /// "If + or - is at the top of the operator stack,
-            /// pop the value stack twice and the operator stack once,
-            /// then apply the popped operator to the popped numbers,
-            /// then push the result onto the value stack.
-            /// 
-            /// Push t onto the operator stack"
-            /// </summary>
-            void addativeFunc(Token token)
-            {
-                if (operatorStack.Peek().IsAddative)
-                {
-                    if (valueStack.Count < 2) throw new FormulaFormatException("adding just one");
-                    valueStack.Push(
-                        new TokenNode(
-                            operatorStack.Pop(),
-                            right: valueStack.Pop(),
-                            left: valueStack.Pop()
-                            )
-                        );
-                }
-                operatorStack.Push(token);
-            }
-
-
-            /// <summary>
-            /// Push t onto the operator stack
-            /// 
-            /// also unnecessary func wrapper. try crying if you dont like it
-            /// </summary>
-            void multiplicativefunc(Token token) => operatorStack.Push(token);
-
 
             /// <summary>
             /// Push t onto the operator stack
             /// 
             /// duplicate of mult. cry about it
             /// </summary>
-            void openParenFunc(Token token) => operatorStack.Push(token);
+            void OpenParenFunc(Token token) => operatorStack.Push(token);
 
             /// <summary>
             /// Do all three of these steps in order:
@@ -640,43 +590,85 @@ namespace SpreadsheetUtilities
             ///     the popped operator to the popped numbers. Push the
             ///     result onto the value stack.
             /// </summary>
-            void closeParenFunc(Token token)
+            void CloseParenFunc(Token token)
             {
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsAddative)
                 {
                     if (valueStack.Count < 2) throw new FormulaFormatException("unary add within parenthesis");
                     valueStack.Push(
                         new TokenNode(
-                        primary: operatorStack.Pop(),
-                        right: valueStack.Pop(),
-                        left: valueStack.Pop()
+                            primary: operatorStack.Pop(),
+                            right: valueStack.Pop(),
+                            left: valueStack.Pop()
                         ));
                 }
                 if (operatorStack.Count == 0 || !operatorStack.Pop().isLParens) throw new FormulaFormatException("Unmatched closing parenthesis");
+                if (operatorStack.Count == 0 || !operatorStack.Peek().IsMultiplicative) return;
+                if (valueStack.Count < 2) throw new FormulaFormatException("idk something went wrong");
+                valueStack.Push(new TokenNode(
+                    operatorStack.Pop(),
+                    right: valueStack.Pop(),
+                    left: valueStack.Pop()
+                ));
+            }
+
+            /// <summary>
+            /// Push t onto the operator stack
+            /// 
+            /// also unnecessary func wrapper. try crying if you dont like it
+            /// </summary>
+            void Multiplicativefunc(Token token) => operatorStack.Push(token);
+
+            /// <summary>
+            /// "If + or - is at the top of the operator stack,
+            /// pop the value stack twice and the operator stack once,
+            /// then apply the popped operator to the popped numbers,
+            /// then push the result onto the value stack.
+            /// 
+            /// Push t onto the operator stack"
+            /// </summary>
+            void AddativeFunc(Token token)
+            {
+                if (operatorStack.Peek().IsAddative)
+                {
+                    if (valueStack.Count < 2) throw new FormulaFormatException("adding just one");
+                    valueStack.Push(
+                        new TokenNode(
+                            operatorStack.Pop(),
+                            right: valueStack.Pop(),
+                            left: valueStack.Pop()
+                        )
+                    );
+                }
+                operatorStack.Push(token);
+            }
+
+            /// <summary>
+            /// If * or / is at the top of the operator stack, pop the value stack,
+            /// pop the operator stack, and apply the popped operator to the popped
+            /// number and t. Push the result onto the value stack.
+            /// 
+            /// Otherwise, push t onto the value stack.
+            /// </summary>
+            void ImmFunc(Token token)
+            {
                 if (operatorStack.Count != 0 && operatorStack.Peek().IsMultiplicative)
                 {
-                    if (valueStack.Count < 2) throw new FormulaFormatException("idk something went wrong");
+                    if (valueStack.Count == 0) throw new ArgumentException("Infix operator only found one operand");
                     valueStack.Push(new TokenNode(
                         operatorStack.Pop(),
-                        right: valueStack.Pop(),
-                        left: valueStack.Pop()
-                        ));
+                        left: valueStack.Pop(),
+                        right: new TokenNode(token, null, null)
+                    ));
+                    return;
                 }
+                valueStack.Push(new TokenNode(token, null, null));
             }
-            // dictionary of regex matched with correct response.
-            return new Dictionary<TokenType, TokenProcFunc> {
-                {TokenType.val, immFunc },
-                {TokenType.var, varFunc },
-                {TokenType.additive, addativeFunc },
-                {TokenType.multiplicative, multiplicativefunc },
-                {TokenType.openParen, openParenFunc },
-                {TokenType.closedParen, closeParenFunc },
-            };
         }
 
         public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
         {
-            ExecutableAst.Compile(gen, fields);
+            _executableAst.Compile(gen, fields);
         }
     }
 
