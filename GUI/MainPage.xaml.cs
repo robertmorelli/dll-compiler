@@ -137,19 +137,3 @@ namespace GUI
     }
 }
 
-
-
-/*for (int i = 0; i < rows; i++)
-    for (int j = 0; j < columns; j++)
-        grid.Add(
-            new Label
-            {
-                Text = $"Row {i}, Col {j}",
-                BackgroundColor = Colors.Azure
-            }, j, i);*/
-/*
- * 
- * 
- * 
-
-*/
