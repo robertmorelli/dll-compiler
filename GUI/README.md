@@ -20,6 +20,7 @@ optimized and compiled spreadsheet formulas in any .NET environment.
 #### ---> [link to why](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.emit.assemblybuilder.save?view=net-9.0#system-reflection-emit-assemblybuilder-save(system-string)) <---
 #### You must:
 - [Download the .NET9 runtime preview](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
+- you may also need to download Visual Studio Preview from your Visual Studio Installer
 - Ensure `global.json` either says `9` as the framework number or `"allowPrerelease"` is `true`
 - You may have to run some of these:
   - `dotnet workload install maui`
