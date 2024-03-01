@@ -164,7 +164,7 @@ namespace SpreadsheetTests
         
         
         [TestMethod]
-        public void FormulaContent()
+        public void CompileTest()
         {
             Spreadsheet.Spreadsheet sheet = new();
             sheet.SetContentsOfCell("a4", "=  a3 + 20 * 10");

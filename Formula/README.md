@@ -4,7 +4,7 @@ Partner:    None
 Start Date: 1-7-24
 Course:     CS 3505, University of Utah, School of Computing
 GitHub ID:  robertmorelli
-Repo:       https://github.com/robertmorelli/Spreadsheet-temp
+Repo:       https://github.com/uofu-cs3500-spring24/assignment-six-gui-functioning-spreadsheet-team
 Commit Date: 2-8-24
 Solution:   Spreadsheet
 Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in Academic Coursework.
