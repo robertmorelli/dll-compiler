@@ -14,6 +14,8 @@
 /// File Contents:
 /// My tests for my implementation of AbstractSpreadsheet
 /// </summary>
+
+using System.Reflection;
 using SS;
 namespace SpreadsheetTests
 {
@@ -145,18 +147,78 @@ namespace SpreadsheetTests
             sheet.GetCellContents("a3");
         }
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         [TestMethod]
         public void FormulaContent()
         {
-            Spreadsheet.Spreadsheet sheet = new((_) => true, (s) => s, "1");
-
+            Spreadsheet.Spreadsheet sheet = new();
             sheet.SetContentsOfCell("a4", "=  a3 + 20 * 10");
             sheet.SetContentsOfCell("a3", "=  a2 + 6 * 30");
             sheet.SetContentsOfCell("a2", "= a1 / 2");
             sheet.SetContentsOfCell("a1", "4");
             sheet.GetCellContents("a3");
-            sheet.Compile("name");
+            
+            //compile to location
+            var location = sheet.Compile("name");
+            
+            //load back in and get type data
+            var nameAssembly = Assembly.LoadFile(location);
+            var instance = nameAssembly.CreateInstance("sheetSpace.sheetLibrary");
+            var sheetType = instance?.GetType();
+            
+            //get methods to test
+            var getA4 = sheetType?.GetMethod("Get_a4");
+            var setA1 = sheetType?.GetMethod("Put_a1");
+            
+            //check constructor puts default values
+            Assert.AreEqual(sheet.GetCellValue("a4"), getA4?.Invoke(instance, []));
+            
+            //change value for both
+            setA1?.Invoke(instance, [5]);
+            sheet.SetContentsOfCell("a1", "5");
+            
+            //check values are updated properly
+            Assert.AreEqual(sheet.GetCellValue("a4"), getA4?.Invoke(instance, []));
         }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
         [TestMethod, ExpectedException(typeof(SpreadsheetReadWriteException))]
         public void ReadFailure()

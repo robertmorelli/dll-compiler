@@ -666,10 +666,8 @@ namespace Formula
             }
         }
 
-        public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
-        {
-            _executableAst.Compile(gen, fields);
-        }
+        public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields) => _executableAst.Compile(gen, fields);
+        
     }
 
     /// <summary>

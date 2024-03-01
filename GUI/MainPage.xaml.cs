@@ -7,7 +7,7 @@ namespace GUI
 {
     public partial class MainPage : ContentPage
     {
-        static readonly int rows = 99;
+        static readonly int rows = 1000000;
         static readonly int columns = 26;
         static readonly int widths = 400;
         static readonly int heights = 30;

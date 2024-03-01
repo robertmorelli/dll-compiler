@@ -166,10 +166,9 @@ namespace Spreadsheet
                 var val = (double)cell.Value;
                 return val;
             }
-            public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields)
-            {
+
+            public void Compile(ILGenerator gen, Dictionary<string, FieldBuilder> fields) =>
                 _content.Compile(gen, fields);
-            }
         }
 
 
@@ -526,25 +525,22 @@ namespace Spreadsheet
                     content.StartsWith('=') ? SetCellContents(name, new Formula.Formula(content[1..], Normalize, IsValid)) :
                     SetCellContents(name, content);
         }
-
-
-        public void Compile(string name)
+        
+        public string Compile(string name)
         {
-            var ab = AssemblyBuilder.DefinePersistedAssembly(new AssemblyName(name + "Assembly"), typeof(object).Assembly);
-            var mob = ab.DefineDynamicModule(name + "Module");
-            var tb = mob.DefineType("sheetSpace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
-
-
-            var fields = new Dictionary<string, FieldBuilder>();
-            var computeFunctions = new Dictionary<string, MethodBuilder>();
-
+            var assemblyBuilder = AssemblyBuilder.DefinePersistedAssembly(new AssemblyName(name + "Assembly"), typeof(object).Assembly);
+            var moduleBuilder = assemblyBuilder.DefineDynamicModule(name + "Module");
+            var typeBuilder = moduleBuilder.DefineType("sheetSpace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
+            var fields = new Dictionary<string, FieldBuilder>(); //field references to create setters/getters
+            var computeFunctions = new Dictionary<string, MethodBuilder>(); //field references to create setters
+            
             //define all fields and getters
             foreach (var cellName in cells.Keys)
             {
                 if (cells[cellName] is StringCell || cells[cellName].Value is not double) continue;
-                var fb = tb.DefineField("_" + cellName, typeof(double), FieldAttributes.Private);//make readonly if cells[cellName] is FormulaCell
+                var fb = typeBuilder.DefineField("_" + cellName, typeof(double), FieldAttributes.Private);
                 fields[cellName] = fb;
-                var getterMethod = tb.DefineMethod("Get_" + cellName, MethodAttributes.Public , typeof(double), Type.EmptyTypes);
+                var getterMethod = typeBuilder.DefineMethod("Get_" + cellName, MethodAttributes.Public , typeof(double), Type.EmptyTypes);
                 var getterIl = getterMethod.GetILGenerator();
                 getterIl.Emit(OpCodes.Ldarg_0);
                 getterIl.Emit(OpCodes.Ldfld, fields[cellName]);
@@ -552,7 +548,7 @@ namespace Spreadsheet
             }
 
             //define constructor
-            var ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
+            var ctor = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, []);
             var ctorIl = ctor.GetILGenerator();
             foreach (var cellName in cells.Keys)
             {
@@ -560,7 +556,6 @@ namespace Spreadsheet
                 ctorIl.Emit(OpCodes.Ldarg_0);
                 ctorIl.Emit(OpCodes.Ldc_R8, d);
                 ctorIl.Emit(OpCodes.Stfld, fields[cellName]);
-
             }
             ctorIl.Emit(OpCodes.Ret);
 
@@ -568,49 +563,39 @@ namespace Spreadsheet
             foreach (var cellName in cells.Keys)
             {
                 if (cells[cellName] is StringCell || cells[cellName] is DoubleCell || cells[cellName].Value is not double) continue;
-
-                var computeMethod = tb.DefineMethod("Compute_" + cellName, MethodAttributes.Private, typeof(void), Type.EmptyTypes);
+                var computeMethod = typeBuilder.DefineMethod("Compute_" + cellName, MethodAttributes.Private, typeof(void), Type.EmptyTypes);
                 var computeIl = computeMethod.GetILGenerator();
-
-                
                 computeIl.Emit(OpCodes.Ldarg_0);
                 ((FormulaCell)cells[cellName]).Compile(computeIl, fields);
                 computeIl.Emit(OpCodes.Stfld, fields[cellName]);
                 computeIl.Emit(OpCodes.Ret);
-
                 computeFunctions[cellName] = computeMethod;
             }
-
-
+            
             //define all field setters to compute relevant fields
             foreach (var cellName in cells.Keys)
             {
                 IEnumerable<string> deps = GetCellsToRecalculate(cellName);
                 if (cells[cellName] is StringCell || cells[cellName] is FormulaCell || cells[cellName].Value is not double) continue;
-
-                // Define setter
-                var setterMethod = tb.DefineMethod("Put_" + cellName, MethodAttributes.Public, typeof(void), [typeof(double)]);
-                var setterIl = setterMethod.GetILGenerator();
-
-                // Setter Logic:
-                setterIl.Emit(OpCodes.Ldarg_0); // Load 'this' (the object instance)
-                setterIl.Emit(OpCodes.Ldarg_1); // Load the new value (first argument)
-                setterIl.Emit(OpCodes.Stfld, fields[cellName]); // Store value in the field
-
+                var setterMethod = typeBuilder.DefineMethod("Put_" + cellName, MethodAttributes.Public, typeof(void), [typeof(double)]);
+                var setCellMsilGenerator = setterMethod.GetILGenerator();
+                setCellMsilGenerator.Emit(OpCodes.Ldarg_0);
+                setCellMsilGenerator.Emit(OpCodes.Ldarg_1);
+                setCellMsilGenerator.Emit(OpCodes.Stfld, fields[cellName]);
+                
                 // Dependency recalculation:
                 foreach (var depCell in deps)
                 {
                     if (!computeFunctions.TryGetValue(depCell, out var b)) continue;
-                    setterIl.Emit(OpCodes.Ldarg_0);  // Load 'this' 
-                    setterIl.Emit(OpCodes.Callvirt, b); // Call compute_[depCell]
+                    setCellMsilGenerator.Emit(OpCodes.Ldarg_0);
+                    setCellMsilGenerator.Emit(OpCodes.Callvirt, b);
                 }
-                setterIl.Emit(OpCodes.Ret);
+                setCellMsilGenerator.Emit(OpCodes.Ret);
             }
-            tb.CreateType();
-
-            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            var fullPath = Path.Combine(desktopPath, name + ".dll");
-            ab.Save(fullPath);
+            typeBuilder.CreateType();
+            var fullPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), name + ".dll");
+            assemblyBuilder.Save(fullPath);
+            return fullPath;
         }
     }
 }
