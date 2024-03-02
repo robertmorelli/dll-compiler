@@ -32,7 +32,7 @@ namespace SpreadsheetTests
             sheet.SetContentsOfCell("a2", "3");
             sheet.SetContentsOfCell("a3", "4");
             sheet.SetContentsOfCell("a4", "1");
-            for (int i = 100; i > 4; i--)
+            for (int i = 1000; i > 4; i--)
                 sheet.SetContentsOfCell("a" + i,
                     string.Format(
                          "=(25 * 50 - 100 + 200 / 400) + a{0} * a{1} - a{2} + a{3} / a{4}",
@@ -50,7 +50,7 @@ namespace SpreadsheetTests
             sheet.SetContentsOfCell("a2", "3");
             sheet.SetContentsOfCell("a3", "4");
             sheet.SetContentsOfCell("a4", "1");
-            for (int i = 5; i < 100; i++)
+            for (int i = 5; i < 100_000; i++)
                 sheet.SetContentsOfCell("a" + i,
                     string.Format(
                          "=(25 * 50 - 100 + 200 / 400) + a{0} * a{1} - a{2} + a{3} / a{4}",
@@ -58,7 +58,6 @@ namespace SpreadsheetTests
                         )
                     );
 
-            sheet.Compile("name");
         }
 
         [TestMethod, ExpectedException(typeof(CircularException))]
@@ -169,9 +168,10 @@ namespace SpreadsheetTests
             Spreadsheet.Spreadsheet sheet = new();
             sheet.SetContentsOfCell("a4", "=  a3 + 20 * 10");
             sheet.SetContentsOfCell("a3", "=  a2 + 6 * 30");
-            sheet.SetContentsOfCell("a2", "= a1 / 2");
+            sheet.SetContentsOfCell("a2", "=  a1 / 2");
             sheet.SetContentsOfCell("a1", "4");
             sheet.GetCellContents("a3");
+            
             
             //compile to location
             var location = sheet.Compile("name");

@@ -38,8 +38,8 @@ namespace Formula
             System.Text.RegularExpressions.RegexOptions.NonBacktracking;
 
         [GeneratedRegex(@"^\s*$", options: RegexOptions)] public static partial Regex IsWhiteSpaceRegex();
-        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z\d]*$", options: RegexOptions)] public static partial Regex IsVariableRegex();
-        [GeneratedRegex(@"\b|([\-)*(+/])", options: RegexOptions)] public static partial Regex Boundaries();
+        [GeneratedRegex(@"^\p{L}[\p{L}\p{Nd}]*$", options: RegexOptions)] public static partial Regex IsVariableRegex();
+        [GeneratedRegex(@"\b((?:\p{Nd}+E[-+]?|\p{Nd}*?\.?)?\d+?)\b|([-)*(+/])|\b(\p{L}[\p{L}\p{Nd}]*?)\b", options: RegexOptions)] public static partial Regex Boundaries();
     }
 
     /// <summary>
@@ -109,7 +109,11 @@ namespace Formula
             var valueStack = new Stack<TokenNode>();
             var operatorStack = new Stack<Token>();
             var tokenProcessor = GenerateTokenProcessorDictionary(valueStack, operatorStack, isValid);
-            _tokens = GetNormalTokens(formula, normalize, isValid).ToArray();
+            _tokens = Utility
+                .Boundaries()
+                .Matches(formula)
+                .Select((m)=> new Token(m.Value))
+                .ToArray();
             if (_tokens.Length == 0) throw new FormulaFormatException("nothing");
 
             tokenProcessor[TokenType.OpenParen](new Token("("));
@@ -502,24 +506,7 @@ namespace Formula
         }
 
         private delegate void TokenProcFunc(Token token);
-
-
-
-        /// <summary>
-        /// Given an expression, enumerates the tokens that compose it.  Tokens are left paren;
-        /// right paren; one of the four operator symbols; a string consisting of a letter or underscore
-        /// followed by zero or more letters, digits, or underscores; a double literal; and anything that doesn't
-        /// match one of those patterns.  There are no empty tokens, and no token contains white space.
-        /// </summary>
-        private static IEnumerable<Token> GetNormalTokens(string formula, Func<string, string> normalize, Func<string, bool> isValid)
-        {
-            List<Token> ret = [];
-            //slow plz fix
-            foreach (var s in Utility.Boundaries().Split(formula))
-                if (!Utility.IsWhiteSpaceRegex().IsMatch(s))
-                    ret.Add(new(s, normalize, isValid));
-            return ret;
-        }
+        
 
         public delegate int Lookup(string variableName);
 

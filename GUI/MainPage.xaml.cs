@@ -1,8 +1,4 @@
 ﻿using Formula;
-using Microsoft.Maui.Controls.Internals;
-using SpreadsheetUtilities;
-using SS;
-
 namespace GUI
 {
     public partial class MainPage : ContentPage
@@ -134,6 +130,7 @@ namespace GUI
         private int RowFromCellName(string name) => name[0] - 'A';
         private int ColFromCellName(string name) => int.Parse(name[1..]);
 
+        
     }
 }
 

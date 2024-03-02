@@ -33,7 +33,7 @@ namespace Spreadsheet
     /// </summary>
     internal static partial class Utility
     {
-        [GeneratedRegex(@"^[a-zA-Z][a-zA-Z\d]*$", options:
+        [GeneratedRegex(@"^\w[\w\d]*$", options:
             RegexOptions.IgnorePatternWhitespace |
             RegexOptions.NonBacktracking)]
         private static partial Regex _validName();
@@ -149,9 +149,9 @@ namespace Spreadsheet
                 {
                     _currentValue = _content.Evaluate(Lookup);
                 }
-                catch
+                catch (Exception e)
                 {
-                    _currentValue = new FormulaError("Dependency Not Valid");
+                    _currentValue = new FormulaError("Dependency Not Valid " + e.Message);
                 }
             }
             public readonly object CompItem => _content;
@@ -316,7 +316,6 @@ namespace Spreadsheet
             if (cells.TryGetValue(name, out var oldCell) && (newCell == oldCell))return deps;
             cells[name] = newCell;
             _graph.ReplaceDependents(name, []);
-            newCell.Compute();
             foreach (var n in deps)
                 if (cells.TryGetValue(n, out var cell))
                     cell.Compute();
@@ -594,6 +593,7 @@ namespace Spreadsheet
             }
             typeBuilder.CreateType();
             var fullPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), name + ".dll");
+            System.IO.File.Delete(fullPath);
             assemblyBuilder.Save(fullPath);
             return fullPath;
         }

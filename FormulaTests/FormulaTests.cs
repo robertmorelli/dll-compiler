@@ -230,6 +230,15 @@ namespace FormulaTests
             var a = new Formula.Formula("1*a1");
             a.Evaluate((_) => 1);
         }
+        
+        [TestMethod]
+        public void ConstDouble()
+        {
+            var a = new Formula.Formula("0.5*a5");
+            Assert.AreEqual(0.5,a.Evaluate((_) => 1));
+        }
+        
+        
         [TestMethod]
         public void DoNothingOperations2()
         {
