@@ -11,9 +11,9 @@ namespace GUI
         static readonly int columns = 7;
         static readonly int widths = 80;
         static readonly int heights = 80;
-        internal Spreadsheet spreadsheet;
-        internal int entryI = 0;
-        internal int entryJ = 0;
+        private Spreadsheet spreadsheet;
+        private int entryI = 0;
+        private int entryJ = 0;
         static readonly Color BGColor = Colors.DarkKhaki;
         public MainPage() //might need to change how this is loaded
         {
@@ -31,7 +31,7 @@ namespace GUI
             HorizontalStackLayout columnlabels = new HorizontalStackLayout{};
             for (int i = 0; i < columns; i++)
             {
-                AddEntry(columnlabels, ((char)(i+65)).ToString(), 2);
+                AddEntry(columnlabels, ((char)('A'+i)).ToString(), 2);
             }
 
             Border EmptyCorner = new Border{StrokeThickness = 2, HeightRequest = heights, WidthRequest = Height, BackgroundColor = BGColor};
@@ -40,7 +40,7 @@ namespace GUI
             {
                 RowDefinitions = new RowDefinitionCollection(
                     Enumerable.Range(0, rows)
-                    .Select((_) => new RowDefinition(height: heights)).ToArray()), //.Where<RowDefinition>((_) => new RowDefinition()).ToArray(),
+                    .Select((_) => new RowDefinition(height: heights)).ToArray()), //.Where<RowDefinition>((_) => new RtaowDefinition()).ToArray(),
                 ColumnDefinitions = new ColumnDefinitionCollection(
                     Enumerable.Range(0, columns)
                     .Select((_) => new ColumnDefinition(width: widths)).ToArray()),
@@ -103,31 +103,32 @@ namespace GUI
                     var toDo = spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
                     foreach (var item in toDo)
                     {
-                        object value = spreadsheet.GetCellValue(item);
-                        string valueString =
-                            (value is FormulaError exception) ?
-                                exception.Reason :
-                                (value is string s) ?
-                                    s :
-                                    (value is double d) ?
-                                    d.ToString() :
-                                    "Something went wrong";
+                        var value = spreadsheet.GetCellValue(item);
+                        var valueString =
+                            (value is FormulaError exception) ? exception.Reason :
+                            (value is string s) ? s :
+                            (value is double d) ? d.ToString("F") :
+                            "Something went wrong";
                         if (!valueString.Equals(""))
                         {
-                            Entry lab = new Entry
+                            var lab = new Label()
                             {
                                 BackgroundColor = BGColor,
                                 Text = valueString,
-
                             };
                             grid.Add(lab, RowFromCellName(item), ColFromCellName(item));
                         }
                     }
-                    grid.Remove(entry);
+
                 }
-                catch
+                catch (Exception error)
                 {
+                    DisplayAlert("Error", error.Message, "OK");
                     //manage errors for circular ...
+                }
+                finally
+                {
+                    grid.Remove(entry);
                 }
             };
             entry.Completed += (sender, e) => entry.Unfocus();
