@@ -31,7 +31,7 @@ namespace GUI
             HorizontalStackLayout columnlabels = new HorizontalStackLayout{};
             for (int i = 0; i < columns; i++)
             {
-                AddEntry(columnlabels, i.ToString(), 2);
+                AddEntry(columnlabels, ((char)(i+65)).ToString(), 2);
             }
 
             Border EmptyCorner = new Border{StrokeThickness = 2, HeightRequest = heights, WidthRequest = Height, BackgroundColor = BGColor};
