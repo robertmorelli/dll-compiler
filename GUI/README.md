@@ -5,9 +5,9 @@ Start Date: 1-7-24
 Course:     CS 3505, University of Utah, School of Computing
 GitHub ID:  robertmorelli, snoahhhh
 Repo:       https://github.com/uofu-cs3500-spring24/assignment-six-gui-functioning-spreadsheet-team
-Commit Date: 2-8-24
+Commit Date: 3-2-24
 Solution:   Spreadsheet
-Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in Academic Coursework.
+Copyright:  CS 3500, Robert Morelli, and Noah Yeh - This work may not be copied for use in Academic Coursework.
 ```
 
 # Comments to Evaluators:
