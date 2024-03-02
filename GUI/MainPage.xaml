@@ -23,23 +23,33 @@
                 <Label x:Name="selectedCell" Text="Stuff could go here" WidthRequest="100"/>
             </HorizontalStackLayout>
         </Border>
-
+    
         <!-- the column headers: A, B, C, ... -->
-        <HorizontalStackLayout x:Name="TopLabels"/>
-
+        <Border
+            StrokeThickness="2"
+            HeightRequest="40">
+            <HorizontalStackLayout x:Name="TopLabels"/>
+        </Border>
         <!-- the Grid of Spreadsheet GUI Cells -->
-        <ScrollView
+        <Border
+            StrokeThickness="2"
+            HeightRequest="504">
+            <ScrollView
                     x:Name="Table"
                     Orientation="Both"
                     HorizontalOptions="FillAndExpand"
                     HorizontalScrollBarVisibility="Always"
                     HeightRequest="500">
+            
             <HorizontalStackLayout>
+                
                 <VerticalStackLayout x:Name="LeftLabels"  BackgroundColor="DarkGray"></VerticalStackLayout>
                 <VerticalStackLayout x:Name="Grid"        BackgroundColor="LightGoldenrodYellow"></VerticalStackLayout>
+               
             </HorizontalStackLayout>
-        </ScrollView>
-
+           
+            </ScrollView>
+            </Border>
     </VerticalStackLayout>
 
 
