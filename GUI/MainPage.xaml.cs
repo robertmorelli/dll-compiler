@@ -1,4 +1,5 @@
-﻿using Microsoft.Maui.Controls.Internals;
+﻿using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Maui.Controls.Internals;
 using SpreadsheetUtilities;
 using SS;
 
@@ -6,19 +7,35 @@ namespace GUI
 {
     public partial class MainPage : ContentPage
     {
-        static readonly int rows = 99;
-        static readonly int columns = 26;
-        static readonly int widths = 400;
-        static readonly int heights = 30;
+        static readonly int rows = 7;
+        static readonly int columns = 7;
+        static readonly int widths = 80;
+        static readonly int heights = 80;
         internal Spreadsheet spreadsheet;
-        internal Dictionary<string, Label> labels = [];
         internal int entryI = 0;
         internal int entryJ = 0;
+        static readonly Color BGColor = Colors.DarkKhaki;
         public MainPage() //might need to change how this is loaded
         {
+
+            // grid code don't touch unless need to, instead I'll add it to a container
             spreadsheet = new(s => true, s => s.ToUpper(), "six");
             InitializeComponent();
-            VerticalStackLayout gridholder = FindByName("Grid") as VerticalStackLayout;
+
+            VerticalStackLayout leftlabels = new VerticalStackLayout{};
+            for (int i = 0; i < rows; i++)
+            {
+                AddEntry(leftlabels, i.ToString(), 2);
+            }
+
+            HorizontalStackLayout columnlabels = new HorizontalStackLayout{};
+            for (int i = 0; i < columns; i++)
+            {
+                AddEntry(columnlabels, i.ToString(), 2);
+            }
+
+            Border EmptyCorner = new Border{StrokeThickness = 2, HeightRequest = heights, WidthRequest = Height, BackgroundColor = BGColor};
+
             Grid grid = new()
             {
                 RowDefinitions = new RowDefinitionCollection(
@@ -27,17 +44,40 @@ namespace GUI
                 ColumnDefinitions = new ColumnDefinitionCollection(
                     Enumerable.Range(0, columns)
                     .Select((_) => new ColumnDefinition(width: widths)).ToArray()),
+                
                 WidthRequest = columns * widths,
                 HeightRequest = rows * heights,
-                BackgroundColor = Colors.Black
+                BackgroundColor = BGColor,
             };
 
             TapGestureRecognizer taps = new();
             taps.Tapped += (_, e) => OnGridTapped(e, grid);
             grid.GestureRecognizers.Add(taps);
 
+            Container.Add(EmptyCorner, 0, 0);
+            Container.Add(leftlabels, 0, 1);
+            Container.Add(grid, 1, 1);
+            Container.Add(columnlabels, 1, 0);
 
-            gridholder?.Add(grid);
+        }
+
+
+        private void AddEntry(Layout layoutToAddTo, string entryText, int strokeSize) 
+        {
+            var border = new Border
+            {   
+                StrokeThickness = strokeSize,
+                Content = new Label
+                {
+                    BackgroundColor = BGColor,
+                    Text = entryText.ToString(),
+                    HeightRequest = heights,
+                    WidthRequest = heights,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    VerticalTextAlignment = TextAlignment.Center,
+                },
+            };
+            layoutToAddTo.Add(border);
         }
 
         private void OnGridTapped(TappedEventArgs e, Grid grid)
@@ -48,15 +88,9 @@ namespace GUI
             string cellName = getCellName(entryI, entryJ);
 
 
-            if (labels.TryGetValue(cellName, out var label))
+            Entry entry = new Entry
             {
-                grid.Remove(label);
-                labels.Remove(cellName);
-            }
-
-            var entry = new Entry
-            {
-                BackgroundColor = Colors.Black,
+                BackgroundColor = BGColor,
                 Text = spreadsheet.GetCellContents(cellName, true).ToString(),
                 ClearButtonVisibility = ClearButtonVisibility.Never,
             };
@@ -69,11 +103,6 @@ namespace GUI
                     var toDo = spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
                     foreach (var item in toDo)
                     {
-                        if (labels.TryGetValue(item, out var label))
-                        {
-                            grid.Remove(label);
-                            labels.Remove(item);
-                        }
                         object value = spreadsheet.GetCellValue(item);
                         string valueString =
                             (value is FormulaError exception) ?
@@ -85,12 +114,12 @@ namespace GUI
                                     "Something went wrong";
                         if (!valueString.Equals(""))
                         {
-                            var lab = new Label
+                            Entry lab = new Entry
                             {
-                                BackgroundColor = Colors.Black,
-                                Text = valueString
+                                BackgroundColor = BGColor,
+                                Text = valueString,
+
                             };
-                            labels.Add(item, lab);
                             grid.Add(lab, RowFromCellName(item), ColFromCellName(item));
                         }
                     }
@@ -148,7 +177,7 @@ namespace GUI
             }
             else
             { //do we need to do other initalization? Also I need some ways to shorten this.
-                
+
                 string filepath = await DisplayPromptAsync("Open File",
                     "Give the path to the file to be opened.");
                 try
@@ -159,7 +188,7 @@ namespace GUI
                 {
                     await DisplayAlert("Failed to open file", ex.ToString(), "OK");
                 }
-            } 
+            }
         }
 
         private void FileMenuHelp(object sender, EventArgs e)

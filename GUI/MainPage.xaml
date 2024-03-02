@@ -24,32 +24,23 @@
             </HorizontalStackLayout>
         </Border>
     
-        <!-- the column headers: A, B, C, ... -->
-        <Border
-            StrokeThickness="2"
-            HeightRequest="40">
-            <HorizontalStackLayout x:Name="TopLabels"/>
-        </Border>
-        <!-- the Grid of Spreadsheet GUI Cells -->
-        <Border
-            StrokeThickness="2"
-            HeightRequest="504">
-            <ScrollView
-                    x:Name="Table"
-                    Orientation="Both"
-                    HorizontalOptions="FillAndExpand"
-                    HorizontalScrollBarVisibility="Always"
-                    HeightRequest="500">
+        
+        
+        <ScrollView
+            x:Name="ScrollContainer"
+            Orientation="Both"
+            HorizontalOptions="StartAndExpand"
+            HorizontalScrollBarVisibility="Always">
+            <Grid x:Name="Container">
+                <Grid.RowDefinitions>
+                        <RowDefinition Height="2*"/>
+                    </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+            </Grid>
+        </ScrollView>
             
-            <HorizontalStackLayout>
-                
-                <VerticalStackLayout x:Name="LeftLabels"  BackgroundColor="DarkGray"></VerticalStackLayout>
-                <VerticalStackLayout x:Name="Grid"        BackgroundColor="LightGoldenrodYellow"></VerticalStackLayout>
-               
-            </HorizontalStackLayout>
-           
-            </ScrollView>
-            </Border>
     </VerticalStackLayout>
 
 
