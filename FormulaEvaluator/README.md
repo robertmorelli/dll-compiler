@@ -16,4 +16,5 @@ This uses an AST based solution to simplify formulas for further use
 I got permission from the prof to do this
 
 # Time Expenditure:
+
     - Assignment One:   Predicted Hours:          2        Actual Hours:   4

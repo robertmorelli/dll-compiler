@@ -1,17 +1,18 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8"?>
+
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="GUI.MainPage">
 
-    
+
     <ContentPage.MenuBarItems>
         <MenuBarItem Text="File">
-            <MenuFlyoutItem Text="New" Clicked="FileMenuNew"/>
+            <MenuFlyoutItem Text="New" Clicked="FileMenuNew" />
             <MenuFlyoutItem Text="Open" Clicked="FileMenuOpenAsync" />
-            <MenuFlyoutItem Text="Help" Clicked="FileMenuHelp"/>
+            <MenuFlyoutItem Text="Help" Clicked="FileMenuHelp" />
         </MenuBarItem>
     </ContentPage.MenuBarItems>
-    
+
 
     <VerticalStackLayout x:Name="Entire">
 
@@ -20,12 +21,11 @@
             StrokeThickness="2"
             HeightRequest="40">
             <HorizontalStackLayout>
-                <Label x:Name="selectedCell" Text="Stuff could go here" WidthRequest="100"/>
+                <Label x:Name="selectedCell" Text="Stuff could go here" WidthRequest="100" />
             </HorizontalStackLayout>
         </Border>
-    
-        
-        
+
+
         <ScrollView
             x:Name="ScrollContainer"
             Orientation="Both"
@@ -33,14 +33,14 @@
             HorizontalScrollBarVisibility="Always">
             <Grid x:Name="Container">
                 <Grid.RowDefinitions>
-                        <RowDefinition Height="2*"/>
-                    </Grid.RowDefinitions>
+                    <RowDefinition Height="2*" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*" />
                 </Grid.ColumnDefinitions>
             </Grid>
         </ScrollView>
-            
+
     </VerticalStackLayout>
 
 

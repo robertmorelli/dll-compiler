@@ -11,7 +11,9 @@ Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in 
 ```
 
 # Comments to Evaluators:
+
 None
 
 # Time Expenditure:
+
     - Assignment Three: Predicted Hours:          2       Actual Hours:   4

@@ -11,7 +11,9 @@ Copyright:  CS 3500 and Robert Morelli - This work may not be copied for use in 
 ```
 
 # Comments to Evaluators:
+
 If you want to implement this recursively do this (doesn't check circularity tho)
+
 ```
 Stack<string> GetCellsToRecalculate(string name)
 {
@@ -29,6 +31,7 @@ Stack<string> GetCellsToRecalculate(string name)
 ```
 
 # Time Expenditure:
+
     - Assignment Four: Predicted Hours:          5       Actual Hours:   7
 
     - Assignment five:  Predicted Hours:   5 code 5 debug     Actual Hours:   2 code 6 debug
