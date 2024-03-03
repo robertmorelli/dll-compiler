@@ -17,8 +17,11 @@ you can export your spreadsheet to a `.dll` and execute
 optimized and compiled spreadsheet formulas in any .NET environment.
 
 ### REQUIREMENTS TO RUN THIS FEATURE: .NET 9 preview
+
 #### ---> [link to why](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.emit.assemblybuilder.save?view=net-9.0#system-reflection-emit-assemblybuilder-save(system-string)) <---
+
 #### You must:
+
 - [Download the .NET9 runtime preview](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
 - you may also need to download Visual Studio Preview from your Visual Studio Installer
 - Ensure `global.json` either says `9` as the framework number or `"allowPrerelease"` is `true`
@@ -29,12 +32,17 @@ optimized and compiled spreadsheet formulas in any .NET environment.
     - `dotnet workload restore`
 
 ### What actually is a compiled spreadsheet?
+
 - The `.dll` will contain one namespace `sheetSpace` with one class type called `sheetLibrary`
-- All cells that return a `"value"` that is a `double` will result in a `private` `double _{cellname}` and a `public` `double Get_{cellname}`
-- All cells that are constant value doubles and not formulas (for example not including `=25`) will result in `public` `void Put_{cellname}`
-- Additionally, `private` `void Compute_{cellname}` exist for all formula based cells and these are used to recalculate cells on a `Put` of any dependency
+- All cells that return a `"value"` that is a `double` will result in a `private` `double _{cellname}` and
+  a `public` `double Get_{cellname}`
+- All cells that are constant value doubles and not formulas (for example not including `=25`) will result
+  in `public` `void Put_{cellname}`
+- Additionally, `private` `void Compute_{cellname}` exist for all formula based cells and these are used to recalculate
+  cells on a `Put` of any dependency
 
 here is a test that may show what exactly this means:
+
 ```c#
 public void CompileTest()
 {
@@ -69,7 +77,9 @@ public void CompileTest()
     Assert.AreEqual(sheet.GetCellValue("a4"), getA4?.Invoke(instance, []));
 }
 ```
+
 The resulting assembly can be decompiled into this (by JetBrains Rider):
+
 ```c#
 // Decompiled with JetBrains decompiler
 // Type: sheetSpace.sheetLibrary
@@ -142,9 +152,10 @@ namespace sheetSpace
   }
 }
 ```
-You can run this test with `dotnet test SpreadsheetTests --filter "CompileTest"` (It will create `name.dll` on your desktop). The net9 cli might also be broken so maybe run in through a UI
 
-
+You can run this test with `dotnet test SpreadsheetTests --filter "CompileTest"` (It will create `name.dll` on your
+desktop). The net9 cli might also be broken so maybe run in through a UI
 
 # Time Expenditure:
+
     - Assignment Six: Predicted Hours:          10       Actual Hours:   14

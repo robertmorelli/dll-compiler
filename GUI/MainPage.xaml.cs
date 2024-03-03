@@ -6,12 +6,13 @@ namespace GUI;
 public partial class MainPage : ContentPage
 {
     private const int Rows = 7;
-    private const int Columns = 7;
-    private const int Widths = 80;
+    private const int Columns = 70;
+    private const int Widths = 200;
     private const int Heights = 30;
-    private static readonly Color BgColor = Colors.Green;
+    private static readonly Color BgColor = Colors.Lavender;
+    private readonly Grid _grid;
 
-    private Dictionary<string, Label> _labels = [];
+    private readonly Dictionary<string, Label> _labels = [];
     private Spreadsheet _spreadsheet;
 
     public MainPage() //might need to change how this is loaded
@@ -34,18 +35,65 @@ public partial class MainPage : ContentPage
         var rowsDef = new RowDefinitionCollection(rowsArray);
         var colsDef = new ColumnDefinitionCollection(colsArray);
 
-        Grid grid = new()
+
+        _grid = new Grid
         {
             RowDefinitions = rowsDef,
             ColumnDefinitions = colsDef,
             WidthRequest = Columns * Widths,
-            HeightRequest = Rows * Heights,
-            BackgroundColor = BgColor
+            HeightRequest = Rows * Heights
         };
+        for (var i = 0; i < Rows; i++)
+        for (var j = 0; j < Columns; j++)
+            _grid.Add(
+                new Label
+                {
+                    Background = new LinearGradientBrush
+                    {
+                        StartPoint = new Point(0,0),
+                        EndPoint = new Point(1,0),
+                        GradientStops = [
+                            new GradientStop
+                            {
+                                Color = Colors.Black,
+                                Offset = 0f
+                            },
+                            new GradientStop
+                            {
+                                Color = Colors.Black,
+                                Offset = .0199f
+                            },
+                            new GradientStop
+                            {
+                                Color = Colors.White,
+                                Offset = .02f
+                            },
+                            new GradientStop
+                            {
+                                Color = Colors.White,
+                                Offset = .9799f
+                            },
+                            new GradientStop
+                            {
+                                Color = Colors.Black,
+                                Offset = .98f
+                            },
+                            new GradientStop
+                            {
+                                Color = Colors.Black,
+                                Offset = 1f
+                            },
+                        ]
+                    }
+                },
+                j,
+                i
+            );
+
 
         var taps = new TapGestureRecognizer();
-        taps.Tapped += (_, e) => OnGridTapped(e, grid);
-        grid.GestureRecognizers.Add(taps);
+        taps.Tapped += (_, e) => OnGridTapped(e);
+        _grid.GestureRecognizers.Add(taps);
 
         var emptyCorner = new Border
         {
@@ -57,7 +105,7 @@ public partial class MainPage : ContentPage
 
         Container.Add(emptyCorner, 0);
         Container.Add(leftLabels, 0, 1);
-        Container.Add(grid, 1, 1);
+        Container.Add(_grid, 1, 1);
         Container.Add(columnLabels, 1);
     }
 
@@ -80,9 +128,9 @@ public partial class MainPage : ContentPage
     }
 
 
-    private void OnGridTapped(TappedEventArgs e, Grid grid)
+    private void OnGridTapped(TappedEventArgs e)
     {
-        var pos = (Point)e.GetPosition(grid);
+        var pos = (Point)e.GetPosition(_grid);
         var entryI = (int)(pos.X / Widths);
         var entryJ = (int)(pos.Y / Heights);
         var cellName = GetCellName(entryI, entryJ);
@@ -90,18 +138,20 @@ public partial class MainPage : ContentPage
         var entryText = _spreadsheet.GetCellContents(cellName, true).ToString() ?? "";
         var entry = new Entry
         {
-            BackgroundColor = BgColor,
+            BackgroundColor = Colors.Transparent,
             Text = entryText,
             ClearButtonVisibility = ClearButtonVisibility.Never,
             CursorPosition = entryText.Length
         };
+        var hasOld = _labels.Remove(cellName, out var oldLabel);
+        if (hasOld) _grid.Remove(oldLabel);
 
 
         entry.Unfocused += (_, _) =>
         {
             try
             {
-                var deps = _spreadsheet.SetContentsOfCell(cellName, entryText);
+                var deps = _spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
                 foreach (var dep in deps)
                 {
                     var value = _spreadsheet.GetCellValue(dep);
@@ -110,28 +160,32 @@ public partial class MainPage : ContentPage
                         value is string s ? s :
                         value is double d ? d.ToString("F") :
                         "Something went wrong";
+                    if (_labels.Remove(dep, out var oldDepLabel)) _grid.Remove(oldDepLabel);
                     if (valueString.Length == 0) return;
-                    grid.Add(
-                        new Label
-                        {
-                            BackgroundColor = BgColor,
-                            Text = valueString
-                        },
+                    var label = new Label
+                    {
+                        BackgroundColor = Colors.Transparent,
+                        Text = valueString
+                    };
+                    _grid.Add(
+                        label,
                         RowFromCellName(dep),
                         ColFromCellName(dep));
+                    _labels.Add(dep, label);
                 }
             }
             catch (Exception error)
             {
                 DisplayAlert("Error", error.Message, "OK");
+                if (hasOld) _grid.Add(oldLabel, entryI, entryJ);
             }
             finally
             {
-                grid.Remove(entry);
+                _grid.Remove(entry);
             }
         };
         entry.Completed += (_, _) => entry.Unfocus();
-        grid.Add(entry, entryI, entryJ);
+        _grid.Add(entry, entryI, entryJ);
         entry.Focus();
     }
 
@@ -152,7 +206,9 @@ public partial class MainPage : ContentPage
         try
         {
             _spreadsheet = new Spreadsheet(s => true, s => s.ToUpper(), "six");
-            //destroy all labels
+            foreach (var cellName in _labels.Keys)
+                if (_labels.Remove(cellName, out var label))
+                    _grid.Remove(label);
         }
         catch (Exception ex)
         {
@@ -168,11 +224,13 @@ public partial class MainPage : ContentPage
         var filepath = await DisplayPromptAsync(
             "Open File",
             "Give the path to the file to be opened."
-            );
+        );
         try
         {
             _spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
-            //destroy all labels
+            foreach (var cellName in _labels.Keys)
+                if (_labels.Remove(cellName, out var label))
+                    _grid.Remove(label);
         }
         catch (SpreadsheetReadWriteException ex)
         {
