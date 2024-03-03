@@ -19,6 +19,7 @@
 /// </summary>
 using SpreadsheetUtilities;
 using System.Text.RegularExpressions;
+using SpreadsheetUtilities;
 
 namespace FormulaTests
 {
