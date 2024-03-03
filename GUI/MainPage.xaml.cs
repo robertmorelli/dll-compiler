@@ -240,8 +240,17 @@ public partial class MainPage : ContentPage
 
     private void FileMenuHelp(object sender, EventArgs e)
     {
+
     }
 
+    /*private async void FileMenuExport(object sender, EventArgs e) 
+    {
+        var filename = await DisplayPromptAsync(
+            "Export File",
+            "Give a name to the file to be exported as a dll to your desktop."
+            );
+        _spreadsheet.Compile?(filename);
+    }*/
 
     private static string ColName(int i)
     {
