@@ -10,7 +10,7 @@
             <MenuFlyoutItem Text="New" Clicked="FileMenuNew" />
             <MenuFlyoutItem Text="Open" Clicked="FileMenuOpenAsync" />
             <MenuFlyoutItem Text="Help" Clicked="FileMenuHelp" />
-            <MenuFlyoutItem Text="Export" Clicked="FileMenuExport"/>
+            <MenuFlyoutItem Text="Export" Clicked="FileMenuExport" />
         </MenuBarItem>
     </ContentPage.MenuBarItems>
 

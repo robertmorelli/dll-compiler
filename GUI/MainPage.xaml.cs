@@ -24,8 +24,8 @@ public partial class MainPage : ContentPage
         //make labels
         var leftLabels = new VerticalStackLayout();
         var columnLabels = new HorizontalStackLayout();
-        for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, 2);
-        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 2);
+        for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, 2, Heights, Heights);
+        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 2, Heights, Widths);
 
         //definitions for grid
         var rowsArray = new RowDefinition[Rows];
@@ -110,7 +110,7 @@ public partial class MainPage : ContentPage
     }
 
 
-    private static void AddEntry(Layout layoutToAddTo, string entryText, int strokeSize)
+    private static void AddEntry(Layout layoutToAddTo, string entryText, int strokeSize, int height, int width)
     {
         layoutToAddTo.Add(new Border
         {
@@ -119,8 +119,8 @@ public partial class MainPage : ContentPage
             {
                 BackgroundColor = BgColor,
                 Text = entryText,
-                HeightRequest = Heights,
-                WidthRequest = Heights,
+                HeightRequest = height,
+                WidthRequest = width,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center
             }
@@ -246,14 +246,14 @@ public partial class MainPage : ContentPage
             "OK");
     }
 
-    /*private async void FileMenuExport(object sender, EventArgs e) 
+    private async void FileMenuExport(object sender, EventArgs e) 
     {
         var filename = await DisplayPromptAsync(
             "Export File",
             "Give a name to the file to be exported as a dll to your desktop."
             );
-        _spreadsheet.Compile?(filename);
-    }*/
+        /*_spreadsheet.Compile?(filename);}*/
+    }
 
     private static string ColName(int i)
     {
