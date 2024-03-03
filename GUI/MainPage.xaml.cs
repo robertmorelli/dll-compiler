@@ -1,4 +1,6 @@
 ﻿using Formula;
+using SpreadsheetUtilities;
+using SS;
 namespace GUI
 {
     public partial class MainPage : ContentPage
@@ -7,7 +9,7 @@ namespace GUI
         static readonly int columns = 26;
         static readonly int widths = 400;
         static readonly int heights = 30;
-        private Spreadsheet.Spreadsheet spreadsheet;
+        private Spreadsheet spreadsheet;
         private Dictionary<string, Label> labels = [];
         private int entryI = 0;
         private int entryJ = 0;
