@@ -238,9 +238,12 @@ public partial class MainPage : ContentPage
         }
     }
 
-    private void FileMenuHelp(object sender, EventArgs e)
+    private async void FileMenuHelp(object sender, EventArgs e)
     {
-
+        string HelpText = "";
+        await DisplayAlert("Help",
+            HelpText,
+            "OK");
     }
 
     /*private async void FileMenuExport(object sender, EventArgs e) 
