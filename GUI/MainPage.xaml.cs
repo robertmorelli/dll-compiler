@@ -5,35 +5,32 @@ namespace GUI;
 
 public partial class MainPage : ContentPage
 {
-    private static readonly int rows = 7;
-    private static readonly int columns = 7;
-    private static readonly int widths = 80;
-    private static readonly int heights = 30;
-    private static readonly Color BGColor = Colors.Green;
-    private int entryI;
-    private int entryJ;
-    private Spreadsheet spreadsheet;
+    private const int Rows = 7;
+    private const int Columns = 7;
+    private const int Widths = 80;
+    private const int Heights = 30;
+    private static readonly Color BgColor = Colors.Green;
+
+    private Dictionary<string, Label> _labels = [];
+    private Spreadsheet _spreadsheet;
 
     public MainPage() //might need to change how this is loaded
     {
-        var EmptyCorner = new Border
-            { StrokeThickness = 2, HeightRequest = heights, WidthRequest = Height, BackgroundColor = BGColor };
-        // grid code don't touch unless need to, instead I'll add it to a container
-        spreadsheet = new Spreadsheet(s => true, s => s.ToUpper(), "six");
         InitializeComponent();
+        _spreadsheet = new Spreadsheet(s => true, s => s.ToUpper(), "six");
 
 
         //make labels
         var leftLabels = new VerticalStackLayout();
         var columnLabels = new HorizontalStackLayout();
-        for (var i = 0; i < rows; i++) AddEntry(leftLabels, "" + i, 2);
-        for (var i = 0; i < columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 2);
+        for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, 2);
+        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 2);
 
         //definitions for grid
-        var rowsArray = new RowDefinition[rows];
-        var colsArray = new ColumnDefinition[columns];
-        for (var i = 0; i < rows; i++) rowsArray[i] = new RowDefinition(heights);
-        for (var i = 0; i < columns; i++) colsArray[i] = new ColumnDefinition(widths);
+        var rowsArray = new RowDefinition[Rows];
+        var colsArray = new ColumnDefinition[Columns];
+        for (var i = 0; i < Rows; i++) rowsArray[i] = new RowDefinition(Heights);
+        for (var i = 0; i < Columns; i++) colsArray[i] = new ColumnDefinition(Widths);
         var rowsDef = new RowDefinitionCollection(rowsArray);
         var colsDef = new ColumnDefinitionCollection(colsArray);
 
@@ -41,16 +38,24 @@ public partial class MainPage : ContentPage
         {
             RowDefinitions = rowsDef,
             ColumnDefinitions = colsDef,
-            WidthRequest = columns * widths,
-            HeightRequest = rows * heights,
-            BackgroundColor = BGColor
+            WidthRequest = Columns * Widths,
+            HeightRequest = Rows * Heights,
+            BackgroundColor = BgColor
         };
 
         var taps = new TapGestureRecognizer();
         taps.Tapped += (_, e) => OnGridTapped(e, grid);
         grid.GestureRecognizers.Add(taps);
 
-        Container.Add(EmptyCorner, 0);
+        var emptyCorner = new Border
+        {
+            StrokeThickness = 2,
+            HeightRequest = Heights,
+            WidthRequest = Height,
+            BackgroundColor = BgColor
+        };
+
+        Container.Add(emptyCorner, 0);
         Container.Add(leftLabels, 0, 1);
         Container.Add(grid, 1, 1);
         Container.Add(columnLabels, 1);
@@ -64,10 +69,10 @@ public partial class MainPage : ContentPage
             StrokeThickness = strokeSize,
             Content = new Label
             {
-                BackgroundColor = BGColor,
+                BackgroundColor = BgColor,
                 Text = entryText,
-                HeightRequest = heights,
-                WidthRequest = heights,
+                HeightRequest = Heights,
+                WidthRequest = Heights,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center
             }
@@ -78,18 +83,17 @@ public partial class MainPage : ContentPage
     private void OnGridTapped(TappedEventArgs e, Grid grid)
     {
         var pos = (Point)e.GetPosition(grid);
-        entryI = (int)(pos.X / widths);
-        entryJ = (int)(pos.Y / heights);
+        var entryI = (int)(pos.X / Widths);
+        var entryJ = (int)(pos.Y / Heights);
         var cellName = getCellName(entryI, entryJ);
 
-        var entryText = spreadsheet.GetCellContents(cellName, true).ToString() ?? "";
+        var entryText = _spreadsheet.GetCellContents(cellName, true).ToString() ?? "";
         var entry = new Entry
         {
-            BackgroundColor = BGColor,
+            BackgroundColor = BgColor,
             Text = entryText,
             ClearButtonVisibility = ClearButtonVisibility.Never,
-            CursorPosition = entryText.Length,
-            
+            CursorPosition = entryText.Length
         };
 
 
@@ -97,24 +101,24 @@ public partial class MainPage : ContentPage
         {
             try
             {
-                var toDo = spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
-                foreach (var item in toDo)
+                var deps = _spreadsheet.SetContentsOfCell(cellName, entryText);
+                foreach (var dep in deps)
                 {
-                    var value = spreadsheet.GetCellValue(item);
+                    var value = _spreadsheet.GetCellValue(dep);
                     var valueString =
                         value is FormulaError exception ? exception.Reason :
                         value is string s ? s :
                         value is double d ? d.ToString("F") :
                         "Something went wrong";
-                    if (!valueString.Equals(""))
-                    {
-                        var lab = new Label
+                    if (valueString.Length == 0) return;
+                    grid.Add(
+                        new Label
                         {
-                            BackgroundColor = BGColor,
+                            BackgroundColor = BgColor,
                             Text = valueString
-                        };
-                        grid.Add(lab, RowFromCellName(item), ColFromCellName(item));
-                    }
+                        },
+                        RowFromCellName(dep),
+                        ColFromCellName(dep));
                 }
             }
             catch (Exception error)
@@ -133,16 +137,16 @@ public partial class MainPage : ContentPage
 
     private async void FileMenuNew(object sender, EventArgs e)
     {
-        if (spreadsheet.Changed)
+        if (_spreadsheet.Changed)
         {
             var response = await DisplayAlert("Potential Data Loss",
                 "Creating a new file will cause current contents to be lost, do you wish to continue?",
                 "Yes", "No");
-            if (response) spreadsheet = new Spreadsheet(); //curious if it can imply the same parameters
+            if (response) _spreadsheet = new Spreadsheet(); //curious if it can imply the same parameters
         }
         else
         {
-            spreadsheet = new Spreadsheet(); //do we need to do other initalization?
+            _spreadsheet = new Spreadsheet(); //do we need to do other initalization?
         }
     }
 
@@ -150,18 +154,18 @@ public partial class MainPage : ContentPage
         FileMenuOpenAsync(object sender,
             EventArgs e) //https://learn.microsoft.com/en-us/dotnet/maui/user-interface/pop-ups?view=net-maui-8.0
     {
-        if (spreadsheet.Changed)
+        if (_spreadsheet.Changed)
         {
             var response = await DisplayAlert("Potential Data Loss",
                 "Opening a new file will cause current contents to be lost, do you wish to continue?",
                 "Yes", "No");
-            if (response) spreadsheet = new Spreadsheet();
+            if (response) _spreadsheet = new Spreadsheet();
 
             var filepath = await DisplayPromptAsync("Open File",
                 "Give the path to the file to be opened.");
             try
             {
-                spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
+                _spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
             }
             catch (SpreadsheetReadWriteException ex)
             {
@@ -176,7 +180,7 @@ public partial class MainPage : ContentPage
                 "Give the path to the file to be opened.");
             try
             {
-                spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
+                _spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
             }
             catch (SpreadsheetReadWriteException ex)
             {
