@@ -85,7 +85,7 @@ public partial class MainPage : ContentPage
         var pos = (Point)e.GetPosition(grid);
         var entryI = (int)(pos.X / Widths);
         var entryJ = (int)(pos.Y / Heights);
-        var cellName = getCellName(entryI, entryJ);
+        var cellName = GetCellName(entryI, entryJ);
 
         var entryText = _spreadsheet.GetCellContents(cellName, true).ToString() ?? "";
         var entry = new Entry
@@ -135,57 +135,48 @@ public partial class MainPage : ContentPage
         entry.Focus();
     }
 
+    private async Task<bool> NoRiskOrUserAcceptedRisk()
+    {
+        return !_spreadsheet.Changed ||
+               await DisplayAlert(
+                   "Potential Data Loss",
+                   "This action will cause current contents to be lost, do you wish to continue?",
+                   "Yes",
+                   "No"
+               );
+    }
+
     private async void FileMenuNew(object sender, EventArgs e)
     {
-        if (_spreadsheet.Changed)
+        if (!await NoRiskOrUserAcceptedRisk()) return;
+        try
         {
-            var response = await DisplayAlert("Potential Data Loss",
-                "Creating a new file will cause current contents to be lost, do you wish to continue?",
-                "Yes", "No");
-            if (response) _spreadsheet = new Spreadsheet(); //curious if it can imply the same parameters
+            _spreadsheet = new Spreadsheet(s => true, s => s.ToUpper(), "six");
+            //destroy all labels
         }
-        else
+        catch (Exception ex)
         {
-            _spreadsheet = new Spreadsheet(); //do we need to do other initalization?
+            await DisplayAlert("Something went wrong", ex.ToString(), "OK");
         }
     }
 
-    private async void
-        FileMenuOpenAsync(object sender,
-            EventArgs e) //https://learn.microsoft.com/en-us/dotnet/maui/user-interface/pop-ups?view=net-maui-8.0
+
+    //https://learn.microsoft.com/en-us/dotnet/maui/user-interface/pop-ups?view=net-maui-8.0
+    private async void FileMenuOpenAsync(object sender, EventArgs e)
     {
-        if (_spreadsheet.Changed)
+        if (!await NoRiskOrUserAcceptedRisk()) return;
+        var filepath = await DisplayPromptAsync(
+            "Open File",
+            "Give the path to the file to be opened."
+            );
+        try
         {
-            var response = await DisplayAlert("Potential Data Loss",
-                "Opening a new file will cause current contents to be lost, do you wish to continue?",
-                "Yes", "No");
-            if (response) _spreadsheet = new Spreadsheet();
-
-            var filepath = await DisplayPromptAsync("Open File",
-                "Give the path to the file to be opened.");
-            try
-            {
-                _spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
-            }
-            catch (SpreadsheetReadWriteException ex)
-            {
-                await DisplayAlert("Failed to open file", ex.ToString(), "OK");
-            }
+            _spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
+            //destroy all labels
         }
-        else
+        catch (SpreadsheetReadWriteException ex)
         {
-            //do we need to do other initalization? Also I need some ways to shorten this.
-
-            var filepath = await DisplayPromptAsync("Open File",
-                "Give the path to the file to be opened.");
-            try
-            {
-                _spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
-            }
-            catch (SpreadsheetReadWriteException ex)
-            {
-                await DisplayAlert("Failed to open file", ex.ToString(), "OK");
-            }
+            await DisplayAlert("Failed to open file", ex.ToString(), "OK");
         }
     }
 
@@ -194,27 +185,27 @@ public partial class MainPage : ContentPage
     }
 
 
-    private string ColName(int i)
+    private static string ColName(int i)
     {
         return i.ToString();
     }
 
-    private string RowName(int i)
+    private static string RowName(int i)
     {
         return "" + (char)('A' + i);
     }
 
-    private string getCellName(int r, int c)
+    private static string GetCellName(int r, int c)
     {
         return RowName(r) + ColName(c);
     }
 
-    private int RowFromCellName(string name)
+    private static int RowFromCellName(string name)
     {
         return name[0] - 'A';
     }
 
-    private int ColFromCellName(string name)
+    private static int ColFromCellName(string name)
     {
         return int.Parse(name[1..]);
     }
