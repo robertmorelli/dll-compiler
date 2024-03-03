@@ -1,16 +1,18 @@
-﻿using SpreadsheetUtilities;
+﻿using System.Text.RegularExpressions;
+using SpreadsheetUtilities;
 using SS;
 
 namespace GUI;
 
 public partial class MainPage : ContentPage
 {
-    private const int Rows = 7;
-    private const int Columns = 70;
+    private const int Rows = 40;
+    private const int Columns = 26;
     private const int Widths = 200;
     private const int Heights = 30;
     private static readonly Color BgColor = Colors.Lavender;
     private readonly Grid _grid;
+    
 
     private readonly Dictionary<string, Label> _labels = [];
     private Spreadsheet _spreadsheet;
@@ -18,7 +20,7 @@ public partial class MainPage : ContentPage
     public MainPage() //might need to change how this is loaded
     {
         InitializeComponent();
-        _spreadsheet = new Spreadsheet(s => true, s => s.ToUpper(), "six");
+        _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
 
 
         //make labels
@@ -35,61 +37,21 @@ public partial class MainPage : ContentPage
         var rowsDef = new RowDefinitionCollection(rowsArray);
         var colsDef = new ColumnDefinitionCollection(colsArray);
 
-
+        
         _grid = new Grid
         {
             RowDefinitions = rowsDef,
             ColumnDefinitions = colsDef,
             WidthRequest = Columns * Widths,
-            HeightRequest = Rows * Heights
+            HeightRequest = Rows * Heights,
         };
-        for (var i = 0; i < Rows; i++)
+        
+        for(var i = 0; i < Rows; i++)
         for (var j = 0; j < Columns; j++)
-            _grid.Add(
-                new Label
-                {
-                    Background = new LinearGradientBrush
-                    {
-                        StartPoint = new Point(0,0),
-                        EndPoint = new Point(1,0),
-                        GradientStops = [
-                            new GradientStop
-                            {
-                                Color = Colors.Black,
-                                Offset = 0f
-                            },
-                            new GradientStop
-                            {
-                                Color = Colors.Black,
-                                Offset = .0199f
-                            },
-                            new GradientStop
-                            {
-                                Color = Colors.White,
-                                Offset = .02f
-                            },
-                            new GradientStop
-                            {
-                                Color = Colors.White,
-                                Offset = .9799f
-                            },
-                            new GradientStop
-                            {
-                                Color = Colors.Black,
-                                Offset = .98f
-                            },
-                            new GradientStop
-                            {
-                                Color = Colors.Black,
-                                Offset = 1f
-                            },
-                        ]
-                    }
-                },
-                j,
-                i
-            );
+            _grid.Add(new Border(),j,i);
 
+
+       
 
         var taps = new TapGestureRecognizer();
         taps.Tapped += (_, e) => OnGridTapped(e);
@@ -205,7 +167,7 @@ public partial class MainPage : ContentPage
         if (!await NoRiskOrUserAcceptedRisk()) return;
         try
         {
-            _spreadsheet = new Spreadsheet(s => true, s => s.ToUpper(), "six");
+            _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
             foreach (var cellName in _labels.Keys)
                 if (_labels.Remove(cellName, out var label))
                     _grid.Remove(label);
@@ -227,7 +189,7 @@ public partial class MainPage : ContentPage
         );
         try
         {
-            _spreadsheet = new Spreadsheet(filepath, s => true, s => s.ToUpper(), "six");
+            _spreadsheet = new Spreadsheet(filepath, Utility.IsValidVar, s => s.ToUpper(), "six");
             foreach (var cellName in _labels.Keys)
                 if (_labels.Remove(cellName, out var label))
                     _grid.Remove(label);

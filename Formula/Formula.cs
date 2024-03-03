@@ -43,6 +43,11 @@ public static partial class Utility
 
     [GeneratedRegex(@"\b((?:\p{Nd}+E[-+]?|\p{Nd}*?\.?)?\d+?)\b|([-)*(+/])|\b(\p{L}[\p{L}\p{Nd}]*?)\b", RegexOptions)]
     public static partial Regex Boundaries();
+    
+    [GeneratedRegex(@"^\p{L}\p{Nd}+$", RegexOptions)]
+    public static partial Regex ValidVar();
+
+    public static bool IsValidVar(string s) => ValidVar().IsMatch(s);
 }
 
 /// <summary>
