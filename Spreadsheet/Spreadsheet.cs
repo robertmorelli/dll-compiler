@@ -25,7 +25,7 @@ using Formula;
 using SpreadsheetUtilities;
 using SS;
 
-namespace Spreadsheet
+namespace SpreadsheetUtilities
 {
     /// <summary>
     /// Utility class for keeping regex stuff since it needs to be a partial
