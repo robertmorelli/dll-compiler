@@ -134,9 +134,15 @@ public partial class MainPage : ContentPage
         var pos = (Point)e.GetPosition(_grid);
         var entryI = (int)(pos.X / Widths);
         var entryJ = (int)(pos.Y / Heights);
-        var cellName = GetCellName(entryI, entryJ);
 
+        var cellName = GetCellName(entryI, entryJ);
+        var cellVal = _spreadsheet.GetCellValue(cellName);
         var entryText = _spreadsheet.GetCellContents(cellName, true).ToString() ?? "";
+
+        CellInfoName.Text = cellName;
+        CellInfoValue.Text = cellVal.ToString();
+        CellInfoContent.Text = entryText;
+
         var entry = new Entry
         {
             Text = entryText,

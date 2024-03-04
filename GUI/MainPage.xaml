@@ -17,17 +17,26 @@
 
     <VerticalStackLayout x:Name="Entire">
         <!-- A Place to put the currently selected cell "namd" and "value" -->
-        <Border
-            x:Name="Border"
-            StrokeThickness="2"
-            HeightRequest="100">
-            <HorizontalStackLayout>
-                <Label
-                    x:Name="selectedCell"
-                    Text="Stuff could go here"
-                    WidthRequest="100" />
-            </HorizontalStackLayout>
-        </Border>
+        <HorizontalStackLayout>
+            <Border
+                StrokeThickness="2"
+                HeightRequest="40"
+                WidthRequest="40">
+                <Entry x:Name="CellInfoName" IsReadOnly="true"/>
+            </Border>
+            <Border
+                StrokeThickness="2"
+                HeightRequest="40"
+                WidthRequest="100">
+                <Entry x:Name="CellInfoContent"/>
+            </Border>
+            <Border
+                StrokeThickness="2"
+                HeightRequest="40"
+                WidthRequest="100">
+                <Entry x:Name="CellInfoValue" IsReadOnly="true"/>
+            </Border>
+        </HorizontalStackLayout>
 
         <!-- the column headers: A, B, C, ... -->
         <HorizontalStackLayout x:Name="TopLabelsParent">
