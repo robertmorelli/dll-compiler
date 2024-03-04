@@ -1,5 +1,4 @@
-﻿using Microsoft.Maui.Storage;
-using SpreadsheetUtilities;
+﻿using SpreadsheetUtilities;
 using SS;
 
 namespace GUI;
@@ -12,7 +11,7 @@ public partial class MainPage : ContentPage
     private const int Heights = 35;
     private const int StrokeSize = 1;
     private static readonly Color BgColor = Colors.LightGrey;
-    
+
     private static readonly Color Bg2Color = Colors.LightGrey;
 
     private static readonly Color Bg3Color = Colors.Gray;
@@ -24,13 +23,20 @@ public partial class MainPage : ContentPage
     private Spreadsheet _spreadsheet;
     private string FilenameAfterSave;
 
+
+    private Point _lastGridPoint = new Point(0, 0);
+    private Border _selection = new Border{Stroke = Colors.Chartreuse};
+    private Border _hover = new Border{Stroke = Colors.Coral};
+
+    private Action _destroyCurrent = () => { };
+
     public MainPage() //might need to change how this is loaded
     {
+        //Keep at top
         InitializeComponent();
-        _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
-        nullCell.WidthRequest = Widths;
-        
 
+        //make new spreadsheet to model
+        _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
 
         //definitions for grid
         var rowsArray = new RowDefinition[Rows];
@@ -40,7 +46,7 @@ public partial class MainPage : ContentPage
         var rowsDef = new RowDefinitionCollection(rowsArray);
         var colsDef = new ColumnDefinitionCollection(colsArray);
 
-
+        //Create grid
         _grid = new Grid
         {
             RowDefinitions = rowsDef,
@@ -48,20 +54,19 @@ public partial class MainPage : ContentPage
             WidthRequest = Columns * Widths,
             HeightRequest = Rows * Heights
         };
-
-        //for (var i = 0; i < Rows; i++)
-        //for (var j = 0; j < Columns; j++)
-        //    _grid.Add(new Border(), j, i);
-
-
-        var taps = new TapGestureRecognizer();
-        taps.Tapped += (_, e) => OnGridTapped(e);
-        _grid.GestureRecognizers.Add(taps);
+        //Insert Grid
         Grid.Content = _grid;
 
+        //Add Tap listener for editing cell
+        var taps = new TapGestureRecognizer();
+        taps.Tapped += (_, e) => OnGridTapped((Point)e.GetPosition(_grid));
+        _grid.GestureRecognizers.Add(taps);
+        //SetDefaultCell
+        OnGridTapped(_lastGridPoint);
 
-        colsDef.Add(colsArray[0]);
-        //make labels
+
+        //Make labels
+        nullCell.WidthRequest = Widths;
         var leftLabels = new Grid
         {
             RowDefinitions = rowsDef,
@@ -76,32 +81,22 @@ public partial class MainPage : ContentPage
             WidthRequest = Columns * Widths,
             RowDefinitions = { rowsArray[0] }
         };
+
+        //Populate labels
         for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, i, 0);
         for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 0, i);
 
+        //Insert labels
         TopLabels.Content = columnLabels;
         LeftLabels.Content = leftLabels;
 
-        Grid.Scrolled += (_, e) =>
-        {
-            TopLabels.ScrollToAsync(e.ScrollX, TopLabels.ScrollY, true);
-        };
-        TopLabels.Scrolled += (_, e) =>
-        {
-            Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, true);
-        };
-        
-        Grid.Scrolled += (_, e) =>
-        {
-            LeftLabels.ScrollToAsync(LeftLabels.ScrollX, e.ScrollY, true);
-        };
-        LeftLabels.Scrolled += (_, e) =>
-        {
-            Grid.ScrollToAsync(Grid.ScrollX, e.ScrollY, true);
-        };
-        
-        
+        //Bind Scrolling Together
+        Grid.Scrolled += (_, e) => TopLabels.ScrollToAsync(e.ScrollX, TopLabels.ScrollY, true);
+        TopLabels.Scrolled += (_, e) => Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, true);
+        Grid.Scrolled += (_, e) => LeftLabels.ScrollToAsync(LeftLabels.ScrollX, e.ScrollY, true);
+        LeftLabels.Scrolled += (_, e) => Grid.ScrollToAsync(Grid.ScrollX, e.ScrollY, true);
 
+        //Create hover guide bars
         var rowBar = new Label();
         var colBar = new Label();
         var hover = new PointerGestureRecognizer();
@@ -111,38 +106,41 @@ public partial class MainPage : ContentPage
             var entryI = (int)(pos.X / Widths);
             var entryJ = (int)(pos.Y / Heights);
             var cellName = GetCellName(entryI, entryJ);
+            _grid.Remove(_hover);
+            _grid.Add(_hover,entryI, entryJ);
 
             _grid.Remove(rowBar);
             _grid.Remove(colBar);
             rowBar = new Label
             {
-                BackgroundColor = new Color(0,0,0,10),
-                ZIndex = 2, 
+                BackgroundColor = new Color(0, 0, 0, 10),
+                ZIndex = 2,
                 WidthRequest = _grid.Width * 4
             };
             colBar = new Label
             {
-                BackgroundColor = new Color(0,0,0,10),
-                ZIndex = 2, 
+                BackgroundColor = new Color(0, 0, 0, 10),
+                ZIndex = 2,
                 HeightRequest = _grid.Height * 4
             };
 
             HoverCell.Text = "Hover: " + cellName;
-            _grid.Add(rowBar,  0, Rows + 1, entryJ, entryJ + 1);
-            _grid.Add(colBar, entryI, entryI + 1,0,Columns + 1 );
+            _grid.Add(rowBar, 0, Rows + 1, entryJ, entryJ + 1);
+            _grid.Add(colBar, entryI, entryI + 1, 0, Columns + 1);
         };
-        hover.PointerExited += (_,_) => {
+        hover.PointerExited += (_, _) =>
+        {
             _grid.Remove(rowBar);
-            _grid.Remove(colBar); 
+            _grid.Remove(colBar);
             HoverCell.Text = "Hover: " + "--";
         };
         _grid.GestureRecognizers.Add(hover);
 
 
-
-        this.SizeChanged += (sender, args) => {
-            var width = this.Width;
-            var height = this.Height;
+        SizeChanged += (sender, args) =>
+        {
+            var width = Width;
+            var height = Height;
             Entire.WidthRequest = width;
             Entire.HeightRequest = height - Heights;
             Border.WidthRequest = width - StrokeSize;
@@ -154,7 +152,7 @@ public partial class MainPage : ContentPage
             Grid.WidthRequest = width - Widths - StrokeSize;
             LeftLabels.HeightRequest = Grid.HeightRequest;
         };
-
+        CellInfoContent.Focused += (_, _) => OnGridTapped(_lastGridPoint);
     }
 
 
@@ -177,11 +175,13 @@ public partial class MainPage : ContentPage
     }
 
 
-    private void OnGridTapped(TappedEventArgs e)
+    private void OnGridTapped(Point pos)
     {
-        var pos = (Point)e.GetPosition(_grid);
+        _lastGridPoint = pos;
         var entryI = (int)(pos.X / Widths);
         var entryJ = (int)(pos.Y / Heights);
+        _grid.Remove(_selection);
+        _grid.Add(_selection,entryI, entryJ);
 
         var cellName = GetCellName(entryI, entryJ);
         var cellVal = _spreadsheet.GetCellValue(cellName);
@@ -206,31 +206,36 @@ public partial class MainPage : ContentPage
             Content = entry,
             ZIndex = 3
         };
-        
-        
-        
+
+        _destroyCurrent();
+        _destroyCurrent = () => _grid.Remove(entryWithBorder);
+
         var hasOld = _labels.Remove(cellName, out var oldLabel);
         if (hasOld) _grid.Remove(oldLabel);
 
-
-        entry.Unfocused += (_, _) =>
+        
+        
+        entry.Completed += (_, _) =>
         {
-            _grid.Remove(entryWithBorder);
+            _destroyCurrent();
             try
             {
                 var deps = _spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
+                CellInfoValue.Text = "Value: " + _spreadsheet.GetCellValue(cellName);
                 foreach (var dep in deps)
-                {
-                    if (SetCellForDep(dep)) return;
-                }
+                    if (SetCellForDep(dep))
+                        return;
             }
             catch (Exception error)
             {
                 DisplayAlert("Error", error.Message, "OK");
+                CellInfoContent.Text = "Content: " + _spreadsheet.GetCellContents(cellName);
                 if (hasOld) _grid.Add(oldLabel, entryI, entryJ);
             }
         };
-        entry.Completed += (_, _) => entry.Unfocus();
+
+        entry.TextChanged += (_, _) => { CellInfoContent.Text = "Content: " + entry.Text; };
+
         _grid.Add(entryWithBorder, entryI, entryJ);
         entry.Focus();
     }
@@ -252,8 +257,8 @@ public partial class MainPage : ContentPage
             Content = new Label
             {
                 Text = valueString,
-                BackgroundColor = (value is FormulaError)?Colors.Red:Bg2Color,
-                TextColor = (value is FormulaError)?Colors.White:Colors.Black,
+                BackgroundColor = value is FormulaError ? Colors.Red : Bg2Color,
+                TextColor = value is FormulaError ? Colors.White : Colors.Black,
                 HeightRequest = Heights - 2 * StrokeSize,
                 WidthRequest = Widths - 2 * StrokeSize,
                 HorizontalTextAlignment = TextAlignment.Center,
@@ -319,16 +324,16 @@ public partial class MainPage : ContentPage
     private async void FileMenuHelp(object sender, EventArgs e)
     {
         var HelpText = "To create a new Spreadsheet, use the New button in the File Menu.\n" +
-            "To Open a previously made Spreadsheet, use the Open button in the File Menu.\n" +
-            "To View this help menu, use the Help button in the File Menu.\n" +
-            "To Export this Spreadsheet as a DLL to your Desktop, use the Export button in the File Menu.\n" +
-            "To Save this Spreadsheet to your local AppData folder to be used later, use the Save button in the File Menu.\n" +
-            "To create a new cell, click anywhere in the space between the labels. This will cause it to create a cell at the spot you clicked." +
-            " Once you type your contents in and press enter, it will finalize it and display the cell's value. When a cell " +
-            "turns green, it's contents is valid and when it turns red, it's contents is invalid and needs to be changed.";
+                       "To Open a previously made Spreadsheet, use the Open button in the File Menu.\n" +
+                       "To View this help menu, use the Help button in the File Menu.\n" +
+                       "To Export this Spreadsheet as a DLL to your Desktop, use the Export button in the File Menu.\n" +
+                       "To Save this Spreadsheet to your local AppData folder to be used later, use the Save button in the File Menu.\n" +
+                       "To create a new cell, click anywhere in the space between the labels. This will cause it to create a cell at the spot you clicked." +
+                       " Once you type your contents in and press enter, it will finalize it and display the cell's value. When a cell " +
+                       "turns green, it's contents is valid and when it turns red, it's contents is invalid and needs to be changed.";
         await DisplayAlert("Help",
-        HelpText,
-        "OK");
+            HelpText,
+            "OK");
     }
 
     private async void FileMenuSaveAsync(object sender, EventArgs e)
@@ -338,18 +343,19 @@ public partial class MainPage : ContentPage
             _spreadsheet.Save(FilenameAfterSave);
             return;
         }
+
         var filename = FileSystem.Current.AppDataDirectory + "\\" + await DisplayPromptAsync(
             "Save File",
             "Give a name to the Spreadsheet to be saved."
-            ) + ".sprd";
+        ) + ".sprd";
         if (File.Exists(filename))
         {
-            bool save = await DisplayAlert(
-                   "Potential Data Loss",
-                   "This action will override the previous file's contents, do you wish to continue?",
-                   "Yes",
-                   "No"
-               );
+            var save = await DisplayAlert(
+                "Potential Data Loss",
+                "This action will override the previous file's contents, do you wish to continue?",
+                "Yes",
+                "No"
+            );
             if (save)
             {
                 _spreadsheet.Save(filename);
@@ -361,6 +367,7 @@ public partial class MainPage : ContentPage
             _spreadsheet.Save(filename);
         }
     }
+
     private async void FileMenuExport(object sender, EventArgs e)
     {
         var filename = await DisplayPromptAsync(
@@ -370,7 +377,6 @@ public partial class MainPage : ContentPage
         /*_spreadsheet.Compile?(filename);}*/
     }
 
-    
 
     private static string ColName(int i)
     {

@@ -22,25 +22,25 @@
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="200">
-                <Entry x:Name="HoverCell" IsReadOnly="true"/>
+                <Label x:Name="HoverCell" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="200">
-                <Entry x:Name="CellInfoName" IsReadOnly="true"/>
+                <Label x:Name="CellInfoName" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="200">
-                <Entry x:Name="CellInfoValue" IsReadOnly="true"/>
+                <Label x:Name="CellInfoValue" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="500">
-                <Entry x:Name="CellInfoContent"/>
+                <Entry x:Name="CellInfoContent" IsReadOnly="True"/>
             </Border>
         </HorizontalStackLayout>
 
