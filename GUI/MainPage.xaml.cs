@@ -1,5 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using SpreadsheetUtilities;
+﻿using SpreadsheetUtilities;
 using SS;
 
 namespace GUI;
@@ -10,11 +9,12 @@ public partial class MainPage : ContentPage
     private const int Columns = 26;
     private const int Widths = 200;
     private const int Heights = 30;
+    private const int StrokeSize = 2;
     private static readonly Color BgColor = Colors.Lavender;
     private readonly Grid _grid;
-    
 
-    private readonly Dictionary<string, Label> _labels = [];
+
+    private readonly Dictionary<string, Border> _labels = [];
     private Spreadsheet _spreadsheet;
 
     public MainPage() //might need to change how this is loaded
@@ -22,12 +22,6 @@ public partial class MainPage : ContentPage
         InitializeComponent();
         _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
 
-
-        //make labels
-        var leftLabels = new VerticalStackLayout();
-        var columnLabels = new HorizontalStackLayout();
-        for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, 2, Heights, Heights);
-        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 2, Heights, Widths);
 
         //definitions for grid
         var rowsArray = new RowDefinition[Rows];
@@ -37,56 +31,72 @@ public partial class MainPage : ContentPage
         var rowsDef = new RowDefinitionCollection(rowsArray);
         var colsDef = new ColumnDefinitionCollection(colsArray);
 
-        
+
         _grid = new Grid
         {
             RowDefinitions = rowsDef,
             ColumnDefinitions = colsDef,
             WidthRequest = Columns * Widths,
-            HeightRequest = Rows * Heights,
+            HeightRequest = Rows * Heights
         };
-        
-        for(var i = 0; i < Rows; i++)
-        for (var j = 0; j < Columns; j++)
-            _grid.Add(new Border(),j,i);
 
+        //for (var i = 0; i < Rows; i++)
+        //for (var j = 0; j < Columns; j++)
+        //    _grid.Add(new Border(), j, i);
 
-       
 
         var taps = new TapGestureRecognizer();
         taps.Tapped += (_, e) => OnGridTapped(e);
         _grid.GestureRecognizers.Add(taps);
+        Grid.Add(_grid);
 
-        var emptyCorner = new Border
+
+        //make labels
+        var leftLabels = new Grid
         {
-            StrokeThickness = 2,
-            HeightRequest = Heights,
-            WidthRequest = Height,
-            BackgroundColor = BgColor
+            RowDefinitions = rowsDef,
+            WidthRequest = Widths,
+            HeightRequest = Rows * Heights,
+            ColumnDefinitions = { colsArray[0] }
         };
+        var columnLabels = new Grid
+        {
+            ColumnDefinitions = colsDef,
+            HeightRequest = Heights,
+            WidthRequest = Columns * Widths,
+            RowDefinitions = { rowsArray[0] }
+        };
+        for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, i, 0);
+        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 0, i);
 
-        Container.Add(emptyCorner, 0);
-        Container.Add(leftLabels, 0, 1);
-        Container.Add(_grid, 1, 1);
-        Container.Add(columnLabels, 1);
+        TopLabels.Add(columnLabels);
+        LeftLabels.Add(leftLabels);
+
+        DisplayAlert(
+            "Size of entire",
+            Entire.Bounds.X.ToString() + " : " + Entire.Bounds.Y.ToString(),
+            "Yes"
+        );
+
     }
 
 
-    private static void AddEntry(Layout layoutToAddTo, string entryText, int strokeSize, int height, int width)
+    private static void AddEntry(Grid layoutToAddTo, string entryText, int row,
+        int col)
     {
         layoutToAddTo.Add(new Border
         {
-            StrokeThickness = strokeSize,
+            StrokeThickness = StrokeSize,
             Content = new Label
             {
-                BackgroundColor = BgColor,
                 Text = entryText,
-                HeightRequest = height,
-                WidthRequest = width,
+                BackgroundColor = BgColor,
+                HeightRequest = Heights - 2 * StrokeSize,
+                WidthRequest = Widths - 2 * StrokeSize,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center
             }
-        });
+        }, col, row);
     }
 
 
@@ -111,6 +121,7 @@ public partial class MainPage : ContentPage
 
         entry.Unfocused += (_, _) =>
         {
+            _grid.Remove(entry);
             try
             {
                 var deps = _spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
@@ -124,10 +135,18 @@ public partial class MainPage : ContentPage
                         "Something went wrong";
                     if (_labels.Remove(dep, out var oldDepLabel)) _grid.Remove(oldDepLabel);
                     if (valueString.Length == 0) return;
-                    var label = new Label
+                    var label = new Border
                     {
-                        BackgroundColor = Colors.Transparent,
-                        Text = valueString
+                        StrokeThickness = StrokeSize,
+                        Content = new Label
+                        {
+                            Text = valueString,
+                            BackgroundColor = BgColor,
+                            HeightRequest = Heights - 2 * StrokeSize,
+                            WidthRequest = Widths - 2 * StrokeSize,
+                            HorizontalTextAlignment = TextAlignment.Center,
+                            VerticalTextAlignment = TextAlignment.Center
+                        }
                     };
                     _grid.Add(
                         label,
@@ -140,10 +159,6 @@ public partial class MainPage : ContentPage
             {
                 DisplayAlert("Error", error.Message, "OK");
                 if (hasOld) _grid.Add(oldLabel, entryI, entryJ);
-            }
-            finally
-            {
-                _grid.Remove(entry);
             }
         };
         entry.Completed += (_, _) => entry.Unfocus();
@@ -202,18 +217,18 @@ public partial class MainPage : ContentPage
 
     private async void FileMenuHelp(object sender, EventArgs e)
     {
-        string HelpText = "";
+        var HelpText = "";
         await DisplayAlert("Help",
             HelpText,
             "OK");
     }
 
-    private async void FileMenuExport(object sender, EventArgs e) 
+    private async void FileMenuExport(object sender, EventArgs e)
     {
         var filename = await DisplayPromptAsync(
             "Export File",
             "Give a name to the file to be exported as a dll to your desktop."
-            );
+        );
         /*_spreadsheet.Compile?(filename);}*/
     }
 

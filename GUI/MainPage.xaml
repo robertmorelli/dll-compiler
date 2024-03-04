@@ -15,33 +15,44 @@
     </ContentPage.MenuBarItems>
 
 
-    <VerticalStackLayout x:Name="Entire">
-
+    <VerticalStackLayout
+        HorizontalOptions="Fill"
+        VerticalOptions="Fill"
+        x:Name="Entire" BackgroundColor="Red">
         <!-- A Place to put the currently selected cell "namd" and "value" -->
         <Border
             StrokeThickness="2"
             HeightRequest="40">
             <HorizontalStackLayout>
-                <Label x:Name="selectedCell" Text="Stuff could go here" WidthRequest="100" />
+                <Label
+                    x:Name="selectedCell"
+                    Text="Stuff could go here"
+                    WidthRequest="100" />
             </HorizontalStackLayout>
         </Border>
 
+        <!-- the column headers: A, B, C, ... -->
+        <HorizontalStackLayout
+            x:Name="TopLabels"
+            BackgroundColor="LightBlue" />
 
+        <!-- the Grid of Spreadsheet GUI Cells -->
         <ScrollView
-            x:Name="ScrollContainer"
+            x:Name="Table"
             Orientation="Both"
-            HorizontalOptions="StartAndExpand"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill"
             HorizontalScrollBarVisibility="Always">
-            <Grid x:Name="Container">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="2*" />
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                </Grid.ColumnDefinitions>
-            </Grid>
+            <HorizontalStackLayout
+                x:Name="Container">
+                <VerticalStackLayout
+                    x:Name="LeftLabels"
+                    BackgroundColor="LightBlue" />
+                <VerticalStackLayout
+                    x:Name="Grid"
+                    BackgroundColor="LightGoldenrodYellow" />
+            </HorizontalStackLayout>
         </ScrollView>
-
     </VerticalStackLayout>
 
 
