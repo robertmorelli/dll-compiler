@@ -33,7 +33,7 @@
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
-                WidthRequest="200">
+                WidthRequest="400">
                 <Label x:Name="CellInfoValue" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
             </Border>
             <Border

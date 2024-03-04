@@ -227,13 +227,16 @@ public partial class MainPage : ContentPage
             ZIndex = 3
         };
 
-        _destroyCurrent();
-        _destroyCurrent = () => _grid.Remove(entryWithBorder);
-
         var hasOld = _labels.Remove(cellName, out var oldLabel);
         if (hasOld) _grid.Remove(oldLabel);
-
-
+        
+        
+        _destroyCurrent();
+        _destroyCurrent = () =>
+        {
+            _grid.Remove(entryWithBorder);
+            if (hasOld) _grid.Add(oldLabel, entryI, entryJ);
+        };
         entry.TextChanged += (_, _) => { CellInfoContent.Text = "Content: " + entry.Text; };
         entry.Completed += (_, _) =>
         {
