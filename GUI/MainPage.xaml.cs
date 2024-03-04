@@ -151,7 +151,7 @@ public partial class MainPage : ContentPage
                         Content = new Label
                         {
                             Text = valueString,
-                            BackgroundColor = Bg3Color,
+                            BackgroundColor = (value is FormulaError)?Colors.PaleVioletRed:Bg3Color,
                             HeightRequest = Heights - 2 * StrokeSize,
                             WidthRequest = Widths - 2 * StrokeSize,
                             HorizontalTextAlignment = TextAlignment.Center,
