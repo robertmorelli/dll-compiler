@@ -26,7 +26,7 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
         _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
-        
+        nullCell.WidthRequest = Widths;
         
 
 
@@ -75,32 +75,53 @@ public partial class MainPage : ContentPage
             RowDefinitions = { rowsArray[0] }
         };
         for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, i, 0);
-        AddEntry(columnLabels, "", 0, 0);
-        for (var i = 1; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i - 1), 0, i);
+        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 0, i);
 
         TopLabels.Content = columnLabels;
         LeftLabels.Content = leftLabels;
 
         Grid.Scrolled += (_, e) =>
         {
-            
-            TopLabels.ScrollToAsync(e.ScrollX, TopLabels.ScrollY, false);
+            TopLabels.ScrollToAsync(e.ScrollX, TopLabels.ScrollY, true);
         };
         TopLabels.Scrolled += (_, e) =>
         {
-            Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, false);
+            Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, true);
         };
-        
-        
-        
+
+        var rowBar = new Label();
+        var colBar = new Label();
+        var hover = new PointerGestureRecognizer();
+        hover.PointerMoved += (sender, e) =>
+        {
+            var pos = (Point)e.GetPosition(_grid);
+            var entryI = (int)(pos.X / Widths);
+            var entryJ = (int)(pos.Y / Heights);
+
+            _grid.Remove(rowBar);
+            _grid.Remove(colBar);
+            rowBar = new Label{BackgroundColor = new Color(0,0,0,10)};
+            colBar = new Label{BackgroundColor = new Color(0,0,0,1 0)};
+
+            _grid.Add(rowBar,  0, Rows, entryJ, entryJ + 1);
+            _grid.Add(colBar, entryI, entryI+1,0,Columns );
+        };
+        hover.PointerExited += (_,_) => {
+            _grid.Remove(rowBar);
+            _grid.Remove(colBar); 
+        };
+        _grid.GestureRecognizers.Add(hover);
+
+
+
         this.SizeChanged += (sender, args) => {
             var width = this.Width;
             var height = this.Height;
             Entire.WidthRequest = width;
             Entire.HeightRequest = height;
             Border.WidthRequest = width;
-            TopLabelsParent.WidthRequest = width;
-            TopLabels.WidthRequest = width;
+            TopLabelsHolder.WidthRequest = width;
+            TopLabels.WidthRequest = width - Widths;
             Table.WidthRequest = width;
             Table.HeightRequest = height - 200;
             Grid.HeightRequest = Math.Min(height - 200 - Heights,Heights * Rows);

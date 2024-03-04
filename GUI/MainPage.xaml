@@ -17,7 +17,7 @@
 
     <VerticalStackLayout x:Name="Entire">
         <!-- A Place to put the currently selected cell "namd" and "value" -->
-        <HorizontalStackLayout>
+        <HorizontalStackLayout x:Name="Border">
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
@@ -39,8 +39,9 @@
         </HorizontalStackLayout>
 
         <!-- the column headers: A, B, C, ... -->
-        <HorizontalStackLayout x:Name="TopLabelsParent">
-            <ScrollView x:Name="TopLabels"/>
+        <HorizontalStackLayout x:Name="TopLabelsHolder">
+            <Label x:Name="nullCell"></Label>
+            <ScrollView BackgroundColor="Green" x:Name="TopLabels" HorizontalScrollBarVisibility="Always" Orientation="Horizontal"/>
         </HorizontalStackLayout>
 
         <!-- the Grid of Spreadsheet GUI Cells -->
@@ -48,17 +49,12 @@
             x:Name="Table">
             <HorizontalStackLayout
                 x:Name="Container">
-                <VerticalStackLayout>
-                    <ScrollView x:Name="LeftLabels"/>
-                </VerticalStackLayout>
-                <VerticalStackLayout>
-                    <ScrollView 
-                        x:Name="Grid" 
-                        Orientation="Both"
-                        HorizontalScrollBarVisibility="Always"
-                        VerticalScrollBarVisibility="Always"
-                        BackgroundColor="Red"/>
-                </VerticalStackLayout>
+                <ScrollView x:Name="LeftLabels" VerticalScrollBarVisibility="Always" Orientation="Vertical" />
+                <ScrollView
+                    x:Name="Grid"
+                    Orientation="Both"
+                    HorizontalScrollBarVisibility="Always"
+                    VerticalScrollBarVisibility="Always"/>
             </HorizontalStackLayout>
         </VerticalStackLayout>
     </VerticalStackLayout>
