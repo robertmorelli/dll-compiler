@@ -1,4 +1,5 @@
-﻿using SpreadsheetUtilities;
+﻿using Microsoft.Maui.Storage;
+using SpreadsheetUtilities;
 using SS;
 
 namespace GUI;
@@ -21,6 +22,7 @@ public partial class MainPage : ContentPage
 
     private readonly Dictionary<string, Border> _labels = [];
     private Spreadsheet _spreadsheet;
+    private string FilenameAfterSave;
 
     public MainPage() //might need to change how this is loaded
     {
@@ -299,13 +301,10 @@ public partial class MainPage : ContentPage
     private async void FileMenuOpenAsync(object sender, EventArgs e)
     {
         if (!await NoRiskOrUserAcceptedRisk()) return;
-        var filepath = await DisplayPromptAsync(
-            "Open File",
-            "Give the path to the file to be opened."
-        );
+        var filepath = await FilePicker.Default.PickAsync();
         try
         {
-            _spreadsheet = new Spreadsheet(filepath, Utility.IsValidVar, s => s.ToUpper(), "six");
+            _spreadsheet = new Spreadsheet(filepath.FullPath, Utility.IsValidVar, s => s.ToUpper(), "six");
             foreach (var cellName in _labels.Keys)
                 if (_labels.Remove(cellName, out var label))
                     _grid.Remove(label);
@@ -319,17 +318,49 @@ public partial class MainPage : ContentPage
 
     private async void FileMenuHelp(object sender, EventArgs e)
     {
-        var HelpText = "To create a new Spreadsheet, use the New button in the File Menu." +
-            "To Open a previously made Spreadsheet, use the Open button in the File Menu." +
-            "To View this help menu, use the Help button in the File Menu" +
-            "To Export this Spreadsheet as a DLL to your Desktop, use the Export button in the File Menu." +
-            "To Save this Spreadsheet to be used later, use the Save button in the File Menu";
+        var HelpText = "To create a new Spreadsheet, use the New button in the File Menu.\n" +
+            "To Open a previously made Spreadsheet, use the Open button in the File Menu.\n" +
+            "To View this help menu, use the Help button in the File Menu.\n" +
+            "To Export this Spreadsheet as a DLL to your Desktop, use the Export button in the File Menu.\n" +
+            "To Save this Spreadsheet to your local AppData folder to be used later, use the Save button in the File Menu.\n" +
+            "To create a new cell, click anywhere in the space between the labels. This will cause it to create a cell at the spot you clicked." +
+            " Once you type your contents in and press enter, it will finalize it and display the cell's value. When a cell " +
+            "turns green, it's contents is valid and when it turns red, it's contents is invalid and needs to be changed.";
         await DisplayAlert("Help",
-            HelpText,
-            "OK");
+        HelpText,
+        "OK");
     }
 
-
+    private async void FileMenuSaveAsync(object sender, EventArgs e)
+    {
+        if (FilenameAfterSave != null)
+        {
+            _spreadsheet.Save(FilenameAfterSave);
+            return;
+        }
+        var filename = FileSystem.Current.AppDataDirectory + "\\" + await DisplayPromptAsync(
+            "Save File",
+            "Give a name to the Spreadsheet to be saved."
+            ) + ".sprd";
+        if (File.Exists(filename))
+        {
+            bool save = await DisplayAlert(
+                   "Potential Data Loss",
+                   "This action will override the previous file's contents, do you wish to continue?",
+                   "Yes",
+                   "No"
+               );
+            if (save)
+            {
+                _spreadsheet.Save(filename);
+                FilenameAfterSave = filename;
+            }
+        }
+        else
+        {
+            _spreadsheet.Save(filename);
+        }
+    }
     private async void FileMenuExport(object sender, EventArgs e)
     {
         var filename = await DisplayPromptAsync(
@@ -339,10 +370,7 @@ public partial class MainPage : ContentPage
         /*_spreadsheet.Compile?(filename);}*/
     }
 
-    private async void FileMenuSave(object sender, EventArgs e)
-    {
-        var filename = await FilePicker.Default.PickAsync();
-    }
+    
 
     private static string ColName(int i)
     {
