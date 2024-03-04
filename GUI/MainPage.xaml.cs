@@ -12,7 +12,7 @@ public partial class MainPage : ContentPage
     private const int StrokeSize = 1;
     private static readonly Color BgColor = Colors.LightGrey;
     
-    private static readonly Color Bg2Color = Colors.DimGray;
+    private static readonly Color Bg2Color = Colors.LightGrey;
 
     private static readonly Color Bg3Color = Colors.Gray;
 
