@@ -101,7 +101,7 @@ public partial class MainPage : ContentPage
             _grid.Remove(rowBar);
             _grid.Remove(colBar);
             rowBar = new Label{BackgroundColor = new Color(0,0,0,10)};
-            colBar = new Label{BackgroundColor = new Color(0,0,0,1 0)};
+            colBar = new Label{BackgroundColor = new Color(0,0,0,10)};
 
             _grid.Add(rowBar,  0, Rows, entryJ, entryJ + 1);
             _grid.Add(colBar, entryI, entryI+1,0,Columns );
