@@ -27,17 +27,7 @@ public partial class MainPage : ContentPage
         InitializeComponent();
         _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
         
-        this.SizeChanged += (sender, args) => {
-            var width = this.Width;
-            var height = this.Height;
-            Entire.WidthRequest = width;
-            Entire.HeightRequest = height;
-            Border.WidthRequest = width;
-            TopLabelsParent.WidthRequest = width;
-            TopLabels.WidthRequest = width;
-            Table.WidthRequest = width;
-            Table.HeightRequest = height - 200;
-        };
+        
 
 
         //definitions for grid
@@ -65,7 +55,7 @@ public partial class MainPage : ContentPage
         var taps = new TapGestureRecognizer();
         taps.Tapped += (_, e) => OnGridTapped(e);
         _grid.GestureRecognizers.Add(taps);
-        Grid.Add(_grid);
+        Grid.Content = _grid;
 
 
         colsDef.Add(colsArray[0]);
@@ -91,8 +81,31 @@ public partial class MainPage : ContentPage
         TopLabels.Content = columnLabels;
         LeftLabels.Content = leftLabels;
 
-        Table.Scrolled += (_, e) => { TopLabels.ScaleXTo(Table.ScrollX); };
-        TopLabels.Scrolled += (_, e) => { Table.ScaleXTo(TopLabels.ScrollX); };
+        Grid.Scrolled += (_, e) =>
+        {
+            
+            TopLabels.ScrollToAsync(e.ScrollX, TopLabels.ScrollY, false);
+        };
+        TopLabels.Scrolled += (_, e) =>
+        {
+            Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, false);
+        };
+        
+        
+        
+        this.SizeChanged += (sender, args) => {
+            var width = this.Width;
+            var height = this.Height;
+            Entire.WidthRequest = width;
+            Entire.HeightRequest = height;
+            Border.WidthRequest = width;
+            TopLabelsParent.WidthRequest = width;
+            TopLabels.WidthRequest = width;
+            Table.WidthRequest = width;
+            Table.HeightRequest = height - 200;
+            Grid.HeightRequest = Math.Min(height - 200 - Heights,Heights * Rows);
+            Grid.WidthRequest = width - Widths;
+        };
 
     }
 
@@ -157,7 +170,7 @@ public partial class MainPage : ContentPage
                     var valueString =
                         value is FormulaError exception ? exception.Reason :
                         value is string s ? s :
-                        value is double d ? d.ToString("F") :
+                        value is double d ? d.ToString("N") :
                         "Something went wrong";
                     if (_labels.Remove(dep, out var oldDepLabel)) _grid.Remove(oldDepLabel);
                     if (valueString.Length == 0) return;

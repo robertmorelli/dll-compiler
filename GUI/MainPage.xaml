@@ -35,18 +35,23 @@
         </HorizontalStackLayout>
 
         <!-- the Grid of Spreadsheet GUI Cells -->
-        <ScrollView
-            x:Name="Table"
-            Orientation="Both"
-            HorizontalScrollBarVisibility="Always">
+        <VerticalStackLayout
+            x:Name="Table">
             <HorizontalStackLayout
                 x:Name="Container">
                 <VerticalStackLayout>
                     <ScrollView x:Name="LeftLabels"/>
                 </VerticalStackLayout>
-                <VerticalStackLayout x:Name="Grid"/>
+                <VerticalStackLayout>
+                    <ScrollView 
+                        x:Name="Grid" 
+                        Orientation="Both"
+                        HorizontalScrollBarVisibility="Always"
+                        VerticalScrollBarVisibility="Always"
+                        BackgroundColor="Red"/>
+                </VerticalStackLayout>
             </HorizontalStackLayout>
-        </ScrollView>
+        </VerticalStackLayout>
     </VerticalStackLayout>
 
 
