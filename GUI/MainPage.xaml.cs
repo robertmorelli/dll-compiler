@@ -10,11 +10,11 @@ public partial class MainPage : ContentPage
     private const int Widths = 200;
     private const int Heights = 35;
     private const int StrokeSize = 1;
-    private static readonly Color BgColor = Colors.Lavender;
+    private static readonly Color BgColor = Colors.LightGrey;
     
-    private static readonly Color Bg2Color = Colors.Azure;
+    private static readonly Color Bg2Color = Colors.DimGray;
 
-    private static readonly Color Bg3Color = new Color(150,200,180);
+    private static readonly Color Bg3Color = Colors.Gray;
 
     private readonly Grid _grid;
 
@@ -147,7 +147,7 @@ public partial class MainPage : ContentPage
             TopLabelsHolder.WidthRequest = width - StrokeSize;
             TopLabels.WidthRequest = width - Widths - StrokeSize;
             Table.WidthRequest = width - StrokeSize;
-            Table.HeightRequest = height - Heights * 3 - StrokeSize;
+            Table.HeightRequest = height - Heights * 3 +  25;
             Grid.HeightRequest = Math.Min(Table.HeightRequest - Heights,Heights * Rows);
             Grid.WidthRequest = width - Widths - StrokeSize;
             LeftLabels.HeightRequest = Grid.HeightRequest;
@@ -193,6 +193,7 @@ public partial class MainPage : ContentPage
         {
             Text = entryText,
             BackgroundColor = Bg2Color,
+            TextColor = Colors.White,
             HeightRequest = Heights - 4 * StrokeSize,
             WidthRequest = Widths - 4 * StrokeSize,
             ClearButtonVisibility = ClearButtonVisibility.Never,
@@ -234,7 +235,8 @@ public partial class MainPage : ContentPage
                         Content = new Label
                         {
                             Text = valueString,
-                            BackgroundColor = (value is FormulaError)?Colors.PaleVioletRed:Bg3Color,
+                            BackgroundColor = (value is FormulaError)?Colors.Red:Bg3Color,
+                            TextColor = (value is FormulaError)?Colors.White:Colors.Black,
                             HeightRequest = Heights - 2 * StrokeSize,
                             WidthRequest = Widths - 2 * StrokeSize,
                             HorizontalTextAlignment = TextAlignment.Center,

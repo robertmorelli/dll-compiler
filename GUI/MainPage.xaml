@@ -16,27 +16,6 @@
 
 
     <VerticalStackLayout x:Name="Entire">
-        <!-- A Place to put the currently selected cell "namd" and "value" -->
-        <HorizontalStackLayout>
-            <Border
-                StrokeThickness="2"
-                HeightRequest="40"
-                WidthRequest="70">
-                <Entry Text="Name" IsReadOnly="True"/>
-            </Border>
-            <Border
-                StrokeThickness="2"
-                HeightRequest="40"
-                WidthRequest="100">
-                <Entry Text="Content" IsReadOnly="True"/>
-            </Border>
-            <Border
-                StrokeThickness="2"
-                HeightRequest="40"
-                WidthRequest="100">
-                <Entry Text="Value" IsReadOnly="True"/>
-            </Border>
-        </HorizontalStackLayout>
         <HorizontalStackLayout x:Name="Border">
             <Border
                 StrokeThickness="2"
