@@ -50,7 +50,8 @@ public partial class MainPage : ContentPage
         _grid.GestureRecognizers.Add(taps);
         Grid.Add(_grid);
 
-
+        
+        colsDef.Add(colsArray[0]);
         //make labels
         var leftLabels = new Grid
         {
@@ -67,16 +68,12 @@ public partial class MainPage : ContentPage
             RowDefinitions = { rowsArray[0] }
         };
         for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, i, 0);
-        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 0, i);
+        AddEntry(columnLabels, "", 0, 0);
+        for (var i = 1; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i - 1), 0, i);
 
         TopLabels.Add(columnLabels);
         LeftLabels.Add(leftLabels);
 
-        DisplayAlert(
-            "Size of entire",
-            Entire.Bounds.X.ToString() + " : " + Entire.Bounds.Y.ToString(),
-            "Yes"
-        );
 
     }
 
