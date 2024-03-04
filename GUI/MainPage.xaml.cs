@@ -5,7 +5,7 @@ namespace GUI;
 
 public partial class MainPage : ContentPage
 {
-    private const int Rows = 20;
+    private const int Rows = 200;
     private const int Columns = 26;
     private const int Widths = 200;
     private const int Heights = 35;
@@ -88,6 +88,17 @@ public partial class MainPage : ContentPage
         {
             Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, true);
         };
+        
+        Grid.Scrolled += (_, e) =>
+        {
+            LeftLabels.ScrollToAsync(LeftLabels.ScrollX, e.ScrollY, true);
+        };
+        LeftLabels.Scrolled += (_, e) =>
+        {
+            Grid.ScrollToAsync(Grid.ScrollX, e.ScrollY, true);
+        };
+        
+        
 
         var rowBar = new Label();
         var colBar = new Label();
@@ -101,8 +112,18 @@ public partial class MainPage : ContentPage
 
             _grid.Remove(rowBar);
             _grid.Remove(colBar);
-            rowBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, WidthRequest = _grid.Width};
-            colBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, HeightRequest = _grid.Height};
+            rowBar = new Label
+            {
+                BackgroundColor = new Color(0,0,0,10),
+                ZIndex = 2, 
+                WidthRequest = _grid.Width * 4
+            };
+            colBar = new Label
+            {
+                BackgroundColor = new Color(0,0,0,10),
+                ZIndex = 2, 
+                HeightRequest = _grid.Height * 4
+            };
 
             HoverCell.Text = "Hover: " + cellName;
             _grid.Add(rowBar,  0, Rows + 1, entryJ, entryJ + 1);
@@ -126,9 +147,10 @@ public partial class MainPage : ContentPage
             TopLabelsHolder.WidthRequest = width - StrokeSize;
             TopLabels.WidthRequest = width - Widths - StrokeSize;
             Table.WidthRequest = width - StrokeSize;
-            Table.HeightRequest = height - Heights;
+            Table.HeightRequest = height - Heights * 3 - StrokeSize;
             Grid.HeightRequest = Math.Min(Table.HeightRequest - Heights,Heights * Rows);
             Grid.WidthRequest = width - Widths - StrokeSize;
+            LeftLabels.HeightRequest = Grid.HeightRequest;
         };
 
     }
