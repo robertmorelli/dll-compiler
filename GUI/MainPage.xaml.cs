@@ -288,11 +288,16 @@ public partial class MainPage : ContentPage
 
     private async void FileMenuHelp(object sender, EventArgs e)
     {
-        var HelpText = "";
+        var HelpText = "To create a new Spreadsheet, use the New button in the File Menu." +
+            "To Open a previously made Spreadsheet, use the Open button in the File Menu." +
+            "To View this help menu, use the Help button in the File Menu" +
+            "To Export this Spreadsheet as a DLL to your Desktop, use the Export button in the File Menu." +
+            "To Save this Spreadsheet to be used later, use the Save button in the File Menu";
         await DisplayAlert("Help",
             HelpText,
             "OK");
     }
+
 
     private async void FileMenuExport(object sender, EventArgs e)
     {
@@ -301,6 +306,11 @@ public partial class MainPage : ContentPage
             "Give a name to the file to be exported as a dll to your desktop."
         );
         /*_spreadsheet.Compile?(filename);}*/
+    }
+
+    private async void FileMenuSave(object sender, EventArgs e)
+    {
+        var filename = await FilePicker.Default.PickAsync();
     }
 
     private static string ColName(int i)
