@@ -86,7 +86,7 @@ public class Spreadsheet : AbstractSpreadsheet
     public Spreadsheet(Func<string, bool> isValid, Func<string, string> normalize, string version)
         : base(isValid, normalize, version)
     {
-        Changed = true;
+        Changed = false;
     }
 
     /// <summary>
@@ -94,7 +94,7 @@ public class Spreadsheet : AbstractSpreadsheet
     /// </summary>
     public Spreadsheet() : base(_ => true, s => s, "1")
     {
-        Changed = true;
+        Changed = false;
     }
 
     /// <summary>

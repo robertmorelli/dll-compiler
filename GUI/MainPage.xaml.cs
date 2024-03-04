@@ -193,7 +193,6 @@ public partial class MainPage : ContentPage
         {
             Text = entryText,
             BackgroundColor = Bg2Color,
-            TextColor = Colors.White,
             HeightRequest = Heights - 4 * StrokeSize,
             WidthRequest = Widths - 4 * StrokeSize,
             ClearButtonVisibility = ClearButtonVisibility.Never,
@@ -251,7 +250,7 @@ public partial class MainPage : ContentPage
             Content = new Label
             {
                 Text = valueString,
-                BackgroundColor = (value is FormulaError)?Colors.Red:Bg3Color,
+                BackgroundColor = (value is FormulaError)?Colors.Red:Bg2Color,
                 TextColor = (value is FormulaError)?Colors.White:Colors.Black,
                 HeightRequest = Heights - 2 * StrokeSize,
                 WidthRequest = Widths - 2 * StrokeSize,
