@@ -9,7 +9,7 @@
         <MenuBarItem Text="File" x:Name="BarItem">
             <MenuFlyoutItem Text="New" Clicked="FileMenuNew" />
             <MenuFlyoutItem Text="Open" Clicked="FileMenuOpenAsync" />
-            <MenuFlyoutItem Text="Save" Clicked="FileMenuSaveAsync"/>
+            <MenuFlyoutItem Text="Save" Clicked="FileMenuSaveAsync" />
             <MenuFlyoutItem Text="Help" Clicked="FileMenuHelp" />
             <MenuFlyoutItem Text="Export" Clicked="FileMenuExport" />
         </MenuBarItem>
@@ -22,32 +22,32 @@
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="200">
-                <Label x:Name="HoverCell" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
+                <Label x:Name="HoverCell" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="200">
-                <Label x:Name="CellInfoName" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
+                <Label x:Name="CellInfoName" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="200">
-                <Label x:Name="CellInfoValue" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
+                <Label x:Name="CellInfoValue" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
                 WidthRequest="500">
-                <Entry x:Name="CellInfoContent" IsReadOnly="True"/>
+                <Entry x:Name="CellInfoContent" IsReadOnly="True" />
             </Border>
         </HorizontalStackLayout>
 
         <!-- the column headers: A, B, C, ... -->
         <HorizontalStackLayout x:Name="TopLabelsHolder">
-            <Label x:Name="nullCell"></Label>
-            <ScrollView x:Name="TopLabels" HorizontalScrollBarVisibility="Always" Orientation="Horizontal"/>
+            <Label x:Name="nullCell" />
+            <ScrollView x:Name="TopLabels" HorizontalScrollBarVisibility="Always" Orientation="Horizontal" />
         </HorizontalStackLayout>
 
         <!-- the Grid of Spreadsheet GUI Cells -->
@@ -60,7 +60,7 @@
                     x:Name="Grid"
                     Orientation="Both"
                     HorizontalScrollBarVisibility="Always"
-                    VerticalScrollBarVisibility="Always"/>
+                    VerticalScrollBarVisibility="Always" />
             </HorizontalStackLayout>
         </VerticalStackLayout>
     </VerticalStackLayout>

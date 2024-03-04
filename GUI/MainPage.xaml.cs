@@ -20,15 +20,15 @@ public partial class MainPage : ContentPage
 
 
     private readonly Dictionary<string, Border> _labels = [];
-    private Spreadsheet _spreadsheet;
-    private string FilenameAfterSave;
-
-
-    private Point _lastGridPoint = new Point(0, 0);
-    private Border _selection = new Border{Stroke = Colors.Chartreuse};
-    private Border _hover = new Border{Stroke = Colors.Coral};
 
     private Action _destroyCurrent = () => { };
+    private readonly Border _hover = new() { Stroke = Colors.Coral };
+
+
+    private Point _lastGridPoint = new(0, 0);
+    private readonly Border _selection = new() { Stroke = Colors.Chartreuse };
+    private Spreadsheet _spreadsheet;
+    private string FilenameAfterSave;
 
     public MainPage() //might need to change how this is loaded
     {
@@ -57,45 +57,45 @@ public partial class MainPage : ContentPage
         //Insert Grid
         Grid.Content = _grid;
 
+        SetupGridListenersForCellSelection();
+        MakeLabels(rowsDef, colsArray, colsDef, rowsArray);
+        BindLabelScrollingToGRidScrolling();
+        CreateHoverBars();
+        BindSizeChanges();
+    }
+
+    private void SetupGridListenersForCellSelection()
+    {
         //Add Tap listener for editing cell
         var taps = new TapGestureRecognizer();
         taps.Tapped += (_, e) => OnGridTapped((Point)e.GetPosition(_grid));
         _grid.GestureRecognizers.Add(taps);
         //SetDefaultCell
         OnGridTapped(_lastGridPoint);
+        CellInfoContent.Focused += (_, _) => OnGridTapped(_lastGridPoint);
+    }
 
-
-        //Make labels
-        nullCell.WidthRequest = Widths;
-        var leftLabels = new Grid
+    private void BindSizeChanges()
+    {
+        SizeChanged += (sender, args) =>
         {
-            RowDefinitions = rowsDef,
-            WidthRequest = Widths,
-            HeightRequest = Rows * Heights,
-            ColumnDefinitions = { colsArray[0] }
+            var width = Width;
+            var height = Height;
+            Entire.WidthRequest = width;
+            Entire.HeightRequest = height - Heights;
+            Border.WidthRequest = width - StrokeSize;
+            TopLabelsHolder.WidthRequest = width - StrokeSize;
+            TopLabels.WidthRequest = width - Widths - StrokeSize;
+            Table.WidthRequest = width - StrokeSize;
+            Table.HeightRequest = Entire.HeightRequest - Heights - 6;
+            Grid.HeightRequest = Math.Min(Table.HeightRequest - Heights, Heights * Rows);
+            Grid.WidthRequest = width - Widths - StrokeSize;
+            LeftLabels.HeightRequest = Grid.HeightRequest;
         };
-        var columnLabels = new Grid
-        {
-            ColumnDefinitions = colsDef,
-            HeightRequest = Heights,
-            WidthRequest = Columns * Widths,
-            RowDefinitions = { rowsArray[0] }
-        };
+    }
 
-        //Populate labels
-        for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, i, 0);
-        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 0, i);
-
-        //Insert labels
-        TopLabels.Content = columnLabels;
-        LeftLabels.Content = leftLabels;
-
-        //Bind Scrolling Together
-        Grid.Scrolled += (_, e) => TopLabels.ScrollToAsync(e.ScrollX, TopLabels.ScrollY, true);
-        TopLabels.Scrolled += (_, e) => Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, true);
-        Grid.Scrolled += (_, e) => LeftLabels.ScrollToAsync(LeftLabels.ScrollX, e.ScrollY, true);
-        LeftLabels.Scrolled += (_, e) => Grid.ScrollToAsync(Grid.ScrollX, e.ScrollY, true);
-
+    private void CreateHoverBars()
+    {
         //Create hover guide bars
         var rowBar = new Label();
         var colBar = new Label();
@@ -107,7 +107,7 @@ public partial class MainPage : ContentPage
             var entryJ = (int)(pos.Y / Heights);
             var cellName = GetCellName(entryI, entryJ);
             _grid.Remove(_hover);
-            _grid.Add(_hover,entryI, entryJ);
+            _grid.Add(_hover, entryI, entryJ);
 
             _grid.Remove(rowBar);
             _grid.Remove(colBar);
@@ -135,24 +135,44 @@ public partial class MainPage : ContentPage
             HoverCell.Text = "Hover: " + "--";
         };
         _grid.GestureRecognizers.Add(hover);
+    }
 
+    private void BindLabelScrollingToGRidScrolling()
+    {
+        //Bind Scrolling Together
+        Grid.Scrolled += (_, e) => TopLabels.ScrollToAsync(e.ScrollX, TopLabels.ScrollY, false);
+        TopLabels.Scrolled += (_, e) => Grid.ScrollToAsync(e.ScrollX, Grid.ScrollY, false);
+        Grid.Scrolled += (_, e) => LeftLabels.ScrollToAsync(LeftLabels.ScrollX, e.ScrollY, false);
+        LeftLabels.Scrolled += (_, e) => Grid.ScrollToAsync(Grid.ScrollX, e.ScrollY, false);
+    }
 
-        SizeChanged += (sender, args) =>
+    private void MakeLabels(RowDefinitionCollection rowsDef, ColumnDefinition[] colsArray,
+        ColumnDefinitionCollection colsDef, RowDefinition[] rowsArray)
+    {
+        //Make labels
+        nullCell.WidthRequest = Widths;
+        var leftLabels = new Grid
         {
-            var width = Width;
-            var height = Height;
-            Entire.WidthRequest = width;
-            Entire.HeightRequest = height - Heights;
-            Border.WidthRequest = width - StrokeSize;
-            TopLabelsHolder.WidthRequest = width - StrokeSize;
-            TopLabels.WidthRequest = width - Widths - StrokeSize;
-            Table.WidthRequest = width - StrokeSize;
-            Table.HeightRequest = Entire.HeightRequest - Heights - 6;
-            Grid.HeightRequest = Math.Min(Table.HeightRequest - Heights, Heights * Rows);
-            Grid.WidthRequest = width - Widths - StrokeSize;
-            LeftLabels.HeightRequest = Grid.HeightRequest;
+            RowDefinitions = rowsDef,
+            WidthRequest = Widths,
+            HeightRequest = Rows * Heights,
+            ColumnDefinitions = { colsArray[0] }
         };
-        CellInfoContent.Focused += (_, _) => OnGridTapped(_lastGridPoint);
+        var columnLabels = new Grid
+        {
+            ColumnDefinitions = colsDef,
+            HeightRequest = Heights,
+            WidthRequest = Columns * Widths,
+            RowDefinitions = { rowsArray[0] }
+        };
+
+        //Populate labels
+        for (var i = 0; i < Rows; i++) AddEntry(leftLabels, "" + i, i, 0);
+        for (var i = 0; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i), 0, i);
+
+        //Insert labels
+        TopLabels.Content = columnLabels;
+        LeftLabels.Content = leftLabels;
     }
 
 
@@ -181,7 +201,7 @@ public partial class MainPage : ContentPage
         var entryI = (int)(pos.X / Widths);
         var entryJ = (int)(pos.Y / Heights);
         _grid.Remove(_selection);
-        _grid.Add(_selection,entryI, entryJ);
+        _grid.Add(_selection, entryI, entryJ);
 
         var cellName = GetCellName(entryI, entryJ);
         var cellVal = _spreadsheet.GetCellValue(cellName);
@@ -213,8 +233,8 @@ public partial class MainPage : ContentPage
         var hasOld = _labels.Remove(cellName, out var oldLabel);
         if (hasOld) _grid.Remove(oldLabel);
 
-        
-        
+
+        entry.TextChanged += (_, _) => { CellInfoContent.Text = "Content: " + entry.Text; };
         entry.Completed += (_, _) =>
         {
             _destroyCurrent();
@@ -234,7 +254,6 @@ public partial class MainPage : ContentPage
             }
         };
 
-        entry.TextChanged += (_, _) => { CellInfoContent.Text = "Content: " + entry.Text; };
 
         _grid.Add(entryWithBorder, entryI, entryJ);
         entry.Focus();
