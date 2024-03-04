@@ -1,4 +1,4 @@
-﻿// Note: you are not required to add your own header comment. Leave this one in place.
+// Note: you are not required to add your own header comment. Leave this one in place.
 // Assignment 5
 // Written by Joe Zachary for CS 3500, September 2013
 // Version 1.8
