@@ -5,11 +5,11 @@ namespace GUI;
 
 public partial class MainPage : ContentPage
 {
-    private const int Rows = 40;
+    private const int Rows = 20;
     private const int Columns = 26;
     private const int Widths = 200;
-    private const int Heights = 50;
-    private const int StrokeSize = 2;
+    private const int Heights = 35;
+    private const int StrokeSize = 1;
     private static readonly Color BgColor = Colors.Lavender;
     
     private static readonly Color Bg2Color = Colors.Azure;
@@ -26,6 +26,18 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
         _spreadsheet = new Spreadsheet(Utility.IsValidVar, s => s.ToUpper(), "six");
+        
+        this.SizeChanged += (sender, args) => {
+            var width = this.Width;
+            var height = this.Height;
+            Entire.WidthRequest = width;
+            Entire.HeightRequest = height;
+            Border.WidthRequest = width;
+            TopLabelsParent.WidthRequest = width;
+            TopLabels.WidthRequest = width;
+            Table.WidthRequest = width;
+            Table.HeightRequest = height - 200;
+        };
 
 
         //definitions for grid
@@ -76,8 +88,15 @@ public partial class MainPage : ContentPage
         AddEntry(columnLabels, "", 0, 0);
         for (var i = 1; i < Columns; i++) AddEntry(columnLabels, "" + (char)('A' + i - 1), 0, i);
 
-        TopLabels.Add(columnLabels);
-        LeftLabels.Add(leftLabels);
+        TopLabels.Content = columnLabels;
+        LeftLabels.Content = leftLabels;
+        
+        
+        
+        
+        
+        
+
     }
 
 

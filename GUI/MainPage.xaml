@@ -15,14 +15,12 @@
     </ContentPage.MenuBarItems>
 
 
-    <VerticalStackLayout
-        HorizontalOptions="Fill"
-        VerticalOptions="Fill"
-        x:Name="Entire">
+    <VerticalStackLayout x:Name="Entire">
         <!-- A Place to put the currently selected cell "namd" and "value" -->
         <Border
+            x:Name="Border"
             StrokeThickness="2"
-            HeightRequest="40">
+            HeightRequest="100">
             <HorizontalStackLayout>
                 <Label
                     x:Name="selectedCell"
@@ -32,22 +30,21 @@
         </Border>
 
         <!-- the column headers: A, B, C, ... -->
-        <HorizontalStackLayout
-            x:Name="TopLabels" />
+        <HorizontalStackLayout x:Name="TopLabelsParent">
+            <ScrollView x:Name="TopLabels"/>
+        </HorizontalStackLayout>
 
         <!-- the Grid of Spreadsheet GUI Cells -->
         <ScrollView
             x:Name="Table"
             Orientation="Both"
-            HorizontalOptions="Fill"
-            VerticalOptions="Fill"
             HorizontalScrollBarVisibility="Always">
             <HorizontalStackLayout
                 x:Name="Container">
-                <VerticalStackLayout
-                    x:Name="LeftLabels" />
-                <VerticalStackLayout
-                    x:Name="Grid"/>
+                <VerticalStackLayout>
+                    <ScrollView x:Name="LeftLabels"/>
+                </VerticalStackLayout>
+                <VerticalStackLayout x:Name="Grid"/>
             </HorizontalStackLayout>
         </ScrollView>
     </VerticalStackLayout>
