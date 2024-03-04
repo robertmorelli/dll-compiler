@@ -23,7 +23,7 @@
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 
-namespace Formula
+namespace SpreadsheetUtilities
 {
 
     public static partial class Utility
