@@ -18,7 +18,7 @@
     <VerticalStackLayout
         HorizontalOptions="Fill"
         VerticalOptions="Fill"
-        x:Name="Entire" BackgroundColor="Red">
+        x:Name="Entire">
         <!-- A Place to put the currently selected cell "namd" and "value" -->
         <Border
             StrokeThickness="2"
@@ -33,8 +33,7 @@
 
         <!-- the column headers: A, B, C, ... -->
         <HorizontalStackLayout
-            x:Name="TopLabels"
-            BackgroundColor="LightBlue" />
+            x:Name="TopLabels" />
 
         <!-- the Grid of Spreadsheet GUI Cells -->
         <ScrollView
@@ -46,11 +45,9 @@
             <HorizontalStackLayout
                 x:Name="Container">
                 <VerticalStackLayout
-                    x:Name="LeftLabels"
-                    BackgroundColor="LightBlue" />
+                    x:Name="LeftLabels" />
                 <VerticalStackLayout
-                    x:Name="Grid"
-                    BackgroundColor="LightGoldenrodYellow" />
+                    x:Name="Grid"/>
             </HorizontalStackLayout>
         </ScrollView>
     </VerticalStackLayout>

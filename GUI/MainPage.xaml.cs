@@ -8,9 +8,14 @@ public partial class MainPage : ContentPage
     private const int Rows = 40;
     private const int Columns = 26;
     private const int Widths = 200;
-    private const int Heights = 30;
+    private const int Heights = 50;
     private const int StrokeSize = 2;
     private static readonly Color BgColor = Colors.Lavender;
+    
+    private static readonly Color Bg2Color = Colors.Azure;
+
+    private static readonly Color Bg3Color = new Color(150,200,180);
+
     private readonly Grid _grid;
 
 
@@ -50,7 +55,7 @@ public partial class MainPage : ContentPage
         _grid.GestureRecognizers.Add(taps);
         Grid.Add(_grid);
 
-        
+
         colsDef.Add(colsArray[0]);
         //make labels
         var leftLabels = new Grid
@@ -73,8 +78,6 @@ public partial class MainPage : ContentPage
 
         TopLabels.Add(columnLabels);
         LeftLabels.Add(leftLabels);
-
-
     }
 
 
@@ -107,18 +110,28 @@ public partial class MainPage : ContentPage
         var entryText = _spreadsheet.GetCellContents(cellName, true).ToString() ?? "";
         var entry = new Entry
         {
-            BackgroundColor = Colors.Transparent,
             Text = entryText,
+            BackgroundColor = Bg2Color,
+            HeightRequest = Heights - 4 * StrokeSize,
+            WidthRequest = Widths - 4 * StrokeSize,
             ClearButtonVisibility = ClearButtonVisibility.Never,
             CursorPosition = entryText.Length
         };
+        var entryWithBorder = new Border
+        {
+            StrokeThickness = StrokeSize,
+            Content = entry
+        };
+        
+        
+        
         var hasOld = _labels.Remove(cellName, out var oldLabel);
         if (hasOld) _grid.Remove(oldLabel);
 
 
         entry.Unfocused += (_, _) =>
         {
-            _grid.Remove(entry);
+            _grid.Remove(entryWithBorder);
             try
             {
                 var deps = _spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
@@ -138,7 +151,7 @@ public partial class MainPage : ContentPage
                         Content = new Label
                         {
                             Text = valueString,
-                            BackgroundColor = BgColor,
+                            BackgroundColor = Bg3Color,
                             HeightRequest = Heights - 2 * StrokeSize,
                             WidthRequest = Widths - 2 * StrokeSize,
                             HorizontalTextAlignment = TextAlignment.Center,
@@ -159,7 +172,7 @@ public partial class MainPage : ContentPage
             }
         };
         entry.Completed += (_, _) => entry.Unfocus();
-        _grid.Add(entry, entryI, entryJ);
+        _grid.Add(entryWithBorder, entryI, entryJ);
         entry.Focus();
     }
 
