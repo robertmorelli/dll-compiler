@@ -90,12 +90,9 @@ public partial class MainPage : ContentPage
 
         TopLabels.Content = columnLabels;
         LeftLabels.Content = leftLabels;
-        
-        
-        
-        
-        
-        
+
+        Table.Scrolled += (_, e) => { TopLabels.ScaleXTo(Table.ScrollX); };
+        TopLabels.Scrolled += (_, e) => { Table.ScaleXTo(TopLabels.ScrollX); };
 
     }
 
