@@ -101,8 +101,8 @@ public partial class MainPage : ContentPage
 
             _grid.Remove(rowBar);
             _grid.Remove(colBar);
-            rowBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, WidthRequest = Grid.Width};
-            colBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, HeightRequest = Grid.Height};
+            rowBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, WidthRequest = _grid.Width};
+            colBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, HeightRequest = _grid.Height};
 
             HoverCell.Text = "Hover: " + cellName;
             _grid.Add(rowBar,  0, Rows + 1, entryJ, entryJ + 1);
