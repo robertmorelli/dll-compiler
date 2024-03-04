@@ -21,27 +21,33 @@
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
-                WidthRequest="40">
+                WidthRequest="200">
+                <Entry x:Name="HoverCell" IsReadOnly="true"/>
+            </Border>
+            <Border
+                StrokeThickness="2"
+                HeightRequest="40"
+                WidthRequest="200">
                 <Entry x:Name="CellInfoName" IsReadOnly="true"/>
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
-                WidthRequest="100">
-                <Entry x:Name="CellInfoContent"/>
+                WidthRequest="200">
+                <Entry x:Name="CellInfoValue" IsReadOnly="true"/>
             </Border>
             <Border
                 StrokeThickness="2"
                 HeightRequest="40"
-                WidthRequest="100">
-                <Entry x:Name="CellInfoValue" IsReadOnly="true"/>
+                WidthRequest="500">
+                <Entry x:Name="CellInfoContent"/>
             </Border>
         </HorizontalStackLayout>
 
         <!-- the column headers: A, B, C, ... -->
         <HorizontalStackLayout x:Name="TopLabelsHolder">
             <Label x:Name="nullCell"></Label>
-            <ScrollView BackgroundColor="Green" x:Name="TopLabels" HorizontalScrollBarVisibility="Always" Orientation="Horizontal"/>
+            <ScrollView x:Name="TopLabels" HorizontalScrollBarVisibility="Always" Orientation="Horizontal"/>
         </HorizontalStackLayout>
 
         <!-- the Grid of Spreadsheet GUI Cells -->

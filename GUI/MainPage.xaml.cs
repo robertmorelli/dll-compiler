@@ -97,18 +97,21 @@ public partial class MainPage : ContentPage
             var pos = (Point)e.GetPosition(_grid);
             var entryI = (int)(pos.X / Widths);
             var entryJ = (int)(pos.Y / Heights);
+            var cellName = GetCellName(entryI, entryJ);
 
             _grid.Remove(rowBar);
             _grid.Remove(colBar);
-            rowBar = new Label{BackgroundColor = new Color(0,0,0,10)};
-            colBar = new Label{BackgroundColor = new Color(0,0,0,10)};
+            rowBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, WidthRequest = Grid.Width};
+            colBar = new Label{BackgroundColor = new Color(0,0,0,10),ZIndex = 2, HeightRequest = Grid.Height};
 
-            _grid.Add(rowBar,  0, Rows, entryJ, entryJ + 1);
-            _grid.Add(colBar, entryI, entryI+1,0,Columns );
+            HoverCell.Text = "Hover: " + cellName;
+            _grid.Add(rowBar,  0, Rows + 1, entryJ, entryJ + 1);
+            _grid.Add(colBar, entryI, entryI + 1,0,Columns + 1 );
         };
         hover.PointerExited += (_,_) => {
             _grid.Remove(rowBar);
             _grid.Remove(colBar); 
+            HoverCell.Text = "Hover: " + "--";
         };
         _grid.GestureRecognizers.Add(hover);
 
@@ -119,13 +122,13 @@ public partial class MainPage : ContentPage
             var height = this.Height;
             Entire.WidthRequest = width;
             Entire.HeightRequest = height;
-            Border.WidthRequest = width;
-            TopLabelsHolder.WidthRequest = width;
-            TopLabels.WidthRequest = width - Widths;
-            Table.WidthRequest = width;
-            Table.HeightRequest = height - 200;
-            Grid.HeightRequest = Math.Min(height - 200 - Heights,Heights * Rows);
-            Grid.WidthRequest = width - Widths;
+            Border.WidthRequest = width - StrokeSize;
+            TopLabelsHolder.WidthRequest = width - StrokeSize;
+            TopLabels.WidthRequest = width - Widths - StrokeSize;
+            Table.WidthRequest = width - StrokeSize;
+            Table.HeightRequest = height - Heights;
+            Grid.HeightRequest = Math.Min(Table.HeightRequest - Heights,Heights * Rows);
+            Grid.WidthRequest = width - Widths - StrokeSize;
         };
 
     }
@@ -160,9 +163,9 @@ public partial class MainPage : ContentPage
         var cellVal = _spreadsheet.GetCellValue(cellName);
         var entryText = _spreadsheet.GetCellContents(cellName, true).ToString() ?? "";
 
-        CellInfoName.Text = cellName;
-        CellInfoValue.Text = cellVal.ToString();
-        CellInfoContent.Text = entryText;
+        CellInfoName.Text = "Selected: " + cellName;
+        CellInfoValue.Text = "Value: " + cellVal;
+        CellInfoContent.Text = "Content: " + entryText;
 
         var entry = new Entry
         {
@@ -176,7 +179,8 @@ public partial class MainPage : ContentPage
         var entryWithBorder = new Border
         {
             StrokeThickness = StrokeSize,
-            Content = entry
+            Content = entry,
+            ZIndex = 3
         };
         
         
@@ -203,6 +207,7 @@ public partial class MainPage : ContentPage
                     if (valueString.Length == 0) return;
                     var label = new Border
                     {
+                        ZIndex = 3,
                         StrokeThickness = StrokeSize,
                         Content = new Label
                         {
