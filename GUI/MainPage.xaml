@@ -6,7 +6,7 @@
 
 
     <ContentPage.MenuBarItems>
-        <MenuBarItem Text="File">
+        <MenuBarItem Text="File" x:Name="BarItem">
             <MenuFlyoutItem Text="New" Clicked="FileMenuNew" />
             <MenuFlyoutItem Text="Open" Clicked="FileMenuOpenAsync" />
             <MenuFlyoutItem Text="Help" Clicked="FileMenuHelp" />

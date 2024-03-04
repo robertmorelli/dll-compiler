@@ -142,13 +142,13 @@ public partial class MainPage : ContentPage
             var width = this.Width;
             var height = this.Height;
             Entire.WidthRequest = width;
-            Entire.HeightRequest = height;
+            Entire.HeightRequest = height - Heights;
             Border.WidthRequest = width - StrokeSize;
             TopLabelsHolder.WidthRequest = width - StrokeSize;
             TopLabels.WidthRequest = width - Widths - StrokeSize;
             Table.WidthRequest = width - StrokeSize;
-            Table.HeightRequest = height - Heights * 3 +  25;
-            Grid.HeightRequest = Math.Min(Table.HeightRequest - Heights,Heights * Rows);
+            Table.HeightRequest = Entire.HeightRequest - Heights - 6;
+            Grid.HeightRequest = Math.Min(Table.HeightRequest - Heights, Heights * Rows);
             Grid.WidthRequest = width - Widths - StrokeSize;
             LeftLabels.HeightRequest = Grid.HeightRequest;
         };
@@ -220,34 +220,7 @@ public partial class MainPage : ContentPage
                 var deps = _spreadsheet.SetContentsOfCell(cellName, entry.Text ?? "");
                 foreach (var dep in deps)
                 {
-                    var value = _spreadsheet.GetCellValue(dep);
-                    var valueString =
-                        value is FormulaError exception ? exception.Reason :
-                        value is string s ? s :
-                        value is double d ? d.ToString("N") :
-                        "Something went wrong";
-                    if (_labels.Remove(dep, out var oldDepLabel)) _grid.Remove(oldDepLabel);
-                    if (valueString.Length == 0) return;
-                    var label = new Border
-                    {
-                        ZIndex = 3,
-                        StrokeThickness = StrokeSize,
-                        Content = new Label
-                        {
-                            Text = valueString,
-                            BackgroundColor = (value is FormulaError)?Colors.Red:Bg3Color,
-                            TextColor = (value is FormulaError)?Colors.White:Colors.Black,
-                            HeightRequest = Heights - 2 * StrokeSize,
-                            WidthRequest = Widths - 2 * StrokeSize,
-                            HorizontalTextAlignment = TextAlignment.Center,
-                            VerticalTextAlignment = TextAlignment.Center
-                        }
-                    };
-                    _grid.Add(
-                        label,
-                        RowFromCellName(dep),
-                        ColFromCellName(dep));
-                    _labels.Add(dep, label);
+                    if (SetCellForDep(dep)) return;
                 }
             }
             catch (Exception error)
@@ -259,6 +232,39 @@ public partial class MainPage : ContentPage
         entry.Completed += (_, _) => entry.Unfocus();
         _grid.Add(entryWithBorder, entryI, entryJ);
         entry.Focus();
+    }
+
+    private bool SetCellForDep(string dep)
+    {
+        var value = _spreadsheet.GetCellValue(dep);
+        var valueString =
+            value is FormulaError exception ? exception.Reason :
+            value is string s ? s :
+            value is double d ? d.ToString() :
+            "Something went wrong";
+        if (_labels.Remove(dep, out var oldDepLabel)) _grid.Remove(oldDepLabel);
+        if (valueString.Length == 0) return true;
+        var label = new Border
+        {
+            ZIndex = 3,
+            StrokeThickness = StrokeSize,
+            Content = new Label
+            {
+                Text = valueString,
+                BackgroundColor = (value is FormulaError)?Colors.Red:Bg3Color,
+                TextColor = (value is FormulaError)?Colors.White:Colors.Black,
+                HeightRequest = Heights - 2 * StrokeSize,
+                WidthRequest = Widths - 2 * StrokeSize,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            }
+        };
+        _grid.Add(
+            label,
+            RowFromCellName(dep),
+            ColFromCellName(dep));
+        _labels.Add(dep, label);
+        return false;
     }
 
     private async Task<bool> NoRiskOrUserAcceptedRisk()
@@ -281,6 +287,7 @@ public partial class MainPage : ContentPage
             foreach (var cellName in _labels.Keys)
                 if (_labels.Remove(cellName, out var label))
                     _grid.Remove(label);
+            foreach (var cellName in _spreadsheet.GetNamesOfAllNonemptyCells()) SetCellForDep(cellName);
         }
         catch (Exception ex)
         {
@@ -303,6 +310,7 @@ public partial class MainPage : ContentPage
             foreach (var cellName in _labels.Keys)
                 if (_labels.Remove(cellName, out var label))
                     _grid.Remove(label);
+            foreach (var cellName in _spreadsheet.GetNamesOfAllNonemptyCells()) SetCellForDep(cellName);
         }
         catch (SpreadsheetReadWriteException ex)
         {
