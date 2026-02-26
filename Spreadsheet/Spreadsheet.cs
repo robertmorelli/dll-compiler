@@ -531,7 +531,7 @@ namespace SS
         
         public string Compile(string name)
         {
-            var assemblyBuilder = AssemblyBuilder.DefinePersistedAssembly(new AssemblyName(name + "Assembly"), typeof(object).Assembly, new CustomAttributeBuilder[0]);
+            var assemblyBuilder = new PersistedAssemblyBuilder(new AssemblyName(name + "Assembly"), typeof(object).Assembly, Array.Empty<CustomAttributeBuilder>());
             var moduleBuilder = assemblyBuilder.DefineDynamicModule(name + "Module");
             var typeBuilder = moduleBuilder.DefineType("sheetSpace.sheetLibrary", TypeAttributes.Public | TypeAttributes.Class);
             var fields = new Dictionary<string, FieldBuilder>(); //field references to create setters/getters

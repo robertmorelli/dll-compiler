@@ -7,7 +7,7 @@
 		<Platforms>AnyCPU;arm64</Platforms>
 		
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('macos'))">net9.0-maccatalyst</TargetFrameworks>
-		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">13.1</SupportedOSPlatformVersion>
 		<RuntimeIdentifiers Condition="$([MSBuild]::IsOSPlatform('macos'))">maccatalyst-arm64;maccatalyst-x64</RuntimeIdentifiers>
 		
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
